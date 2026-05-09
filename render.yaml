@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: poffbank-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NOWPAYMENTS_API_KEY
+        value: BT0AHVQ-MM8M4Z2-H57T2NC-V4EM2QG
+      - key: PORT
+        value: 10000
+      - key: BASE_URL
+        value: https://poffbank-api.onrender.com

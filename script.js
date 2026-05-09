@@ -8,11 +8,9 @@
 // ============================================
 const CONFIG = {
     // Backend API URL
-    // Local development
     apiUrl: window.location.origin.includes('localhost') 
-        ? 'http://localhost:3000' 
-        // Production - deployed backend (Update this after deploying backend)
-        : 'https://poffbank-api.onrender.com',
+        ? 'http://localhost:3000'   // Local development
+        : 'https://poffbank-api.onrender.com',  // Render production backend
     
     // Payment settings
     minAmount: 1.00,       // Minimum payment $1.00

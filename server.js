@@ -11,6 +11,11 @@ const PORT = process.env.PORT || 3000;
 const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY || 'BT0AHVQ-MM8M4Z2-H57T2NC-V4EM2QG';
 const NOWPAYMENTS_API_URL = 'https://api.nowpayments.io/v1';
 
+// USDT TRC20 Wallet Configuration
+// Wallet address configured in NOWPayments dashboard:
+// TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh
+// All USDT payments will be sent to this wallet
+
 // Middleware
 app.use(cors());
 app.use(express.json());

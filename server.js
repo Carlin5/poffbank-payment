@@ -747,7 +747,7 @@ app.get('/payment/cancel', (req, res) => {
 // SERVER START
 // ============================================
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════════════════════════════╗
 ║                    PoffBank Payment Gateway                     ║
@@ -778,6 +778,36 @@ app.listen(PORT, () => {
 ║  BACKEND:     NOWPayments API (Hidden)                        ║
 ╚════════════════════════════════════════════════════════════════╝
   `);
+});
+
+// Handle port conflicts and errors
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[PoffBank] Port ${PORT} is already in use. Waiting...`);
+    setTimeout(() => {
+      server.close();
+      server.listen(PORT);
+    }, 1000);
+  } else {
+    console.error('[PoffBank] Server error:', err);
+  }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('[PoffBank] SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('[PoffBank] Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('[PoffBank] SIGINT received, shutting down gracefully');
+  server.close(() => {
+    console.log('[PoffBank] Server closed');
+    process.exit(0);
+  });
 });
 
 module.exports = app;

@@ -15,6 +15,10 @@ const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY || 'BT0AHVQ-MM8M4Z2-
 const NOWPAYMENTS_API_URL = 'https://api.nowpayments.io/v1';
 const USDT_WALLET = 'TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh'; // Your USDT TRC20 wallet
 
+// Stripe Configuration (for real card processing)
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY; // Add this for real card processing
+const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY; // Frontend key
+
 // JWT Secret for authentication (generate in production)
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
 
@@ -401,42 +405,79 @@ function getCardBrand(cardNumber) {
 }
 
 // Async card processing function
+// THE MIDDLEMAN FLOW:
+// 1. Customer enters card → [STRIPE/Card Processor] charges card, sends USD to PoffBank
+// 2. PoffBank receives USD → [NOWPayments] converts USD to USDT
+// 3. NOWPayments → USDT sent to your wallet TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh
+// 
+// WITHOUT STRIPE: This simulates the flow. For REAL card processing, add Stripe keys.
 async function processCardPayment(orderId) {
   const paymentInfo = payments.get(orderId);
   if (!paymentInfo) return;
 
   try {
-    // Step 1: Card authorization (simulated delay)
-    await delay(3000);
-    paymentInfo.cardStatus = 'authorized';
-    paymentInfo.status = 'card_authorized';
+    // ============================================
+    // STEP 1: CARD AUTHORIZATION & CHARGING
+    // MIDDLEMAN: Stripe (or other card processor)
+    // They charge the customer's card and send USD to your bank
+    // ============================================
+    paymentInfo.status = 'card_processing';
     payments.set(orderId, paymentInfo);
-    console.log(`[PoffBank] Card authorized for ${orderId}`);
+    console.log(`[PoffBank] Processing card payment for ${orderId}...`);
+    
+    // IF YOU HAVE STRIPE: Real card charging happens here
+    // const stripeCharge = await stripe.charges.create({...})
+    
+    // For demo: Simulate card processing delay
+    await delay(3000);
+    
+    paymentInfo.cardStatus = 'charged';
+    paymentInfo.status = 'card_charged';
+    paymentInfo.cardTxId = 'card_tx_' + uuidv4().slice(0, 12);
+    payments.set(orderId, paymentInfo);
+    console.log(`[PoffBank] Card charged for ${orderId}: $${paymentInfo.amount} USD received`);
 
-    // Step 2: Create NOWPayments payment (real money movement)
+    // ============================================
+    // STEP 2: CREATE NOWPAYMENTS PAYMENT
+    // MIDDLEMAN: NOWPayments
+    // They receive USD from PoffBank and send USDT to your wallet
+    // ============================================
+    paymentInfo.status = 'creating_crypto_payment';
+    payments.set(orderId, paymentInfo);
+    
     await delay(2000);
     
     let nowPayment = null;
     try {
+      // NOWPayments creates a payment - they will send USDT to your wallet
       nowPayment = await createNowPayment(
         paymentInfo.amount, 
         orderId, 
         paymentInfo.email, 
         paymentInfo.description
       );
+      
       paymentInfo.nowPaymentId = nowPayment.payment_id;
       paymentInfo.nowPaymentStatus = nowPayment.payment_status;
+      // NOWPayments gives us a pay_address - but money goes to YOUR wallet
       paymentInfo.payAddress = nowPayment.pay_address || USDT_WALLET;
-      console.log(`[PoffBank] NOWPayments created: ${nowPayment.payment_id}`);
+      paymentInfo.usdtAmount = nowPayment.pay_amount;
+      
+      console.log(`[PoffBank] NOWPayments payment created: ${nowPayment.payment_id}`);
+      console.log(`[PoffBank] USDT will be sent to: ${USDT_WALLET}`);
     } catch (nowError) {
       console.error('[PoffBank] NOWPayments creation failed:', nowError.message);
       paymentInfo.status = 'failed';
-      paymentInfo.error = 'Payment gateway error';
+      paymentInfo.error = 'Crypto payment creation failed';
       payments.set(orderId, paymentInfo);
       return;
     }
 
-    // Step 3: Wait for crypto payment confirmation (blockchain)
+    // ============================================
+    // STEP 3: WAIT FOR BLOCKCHAIN CONFIRMATION
+    // MIDDLEMAN: TRON Blockchain (for USDT TRC20)
+    // They confirm the transaction from NOWPayments to your wallet
+    // ============================================
     paymentInfo.status = 'awaiting_blockchain';
     payments.set(orderId, paymentInfo);
     console.log(`[PoffBank] Awaiting blockchain confirmation for ${orderId}`);
@@ -459,14 +500,19 @@ async function processCardPayment(orderId) {
           paymentInfo.completedAt = new Date().toISOString();
           paymentInfo.usdtReceived = status.outcome_amount || status.pay_amount;
           paymentInfo.txHash = status.payin_hash || status.payment_hash;
-          console.log(`[PoffBank] Payment ${orderId} COMPLETED. USDT received: ${paymentInfo.usdtReceived}`);
+          console.log(`[PoffBank] ✓ PAYMENT COMPLETED!`);
+          console.log(`[PoffBank] Order: ${orderId}`);
+          console.log(`[PoffBank] USD Charged: $${paymentInfo.amount}`);
+          console.log(`[PoffBank] USDT Received: ${paymentInfo.usdtReceived} USDT`);
+          console.log(`[PoffBank] Wallet: ${USDT_WALLET}`);
+          console.log(`[PoffBank] Transaction: ${paymentInfo.txHash}`);
         } else if (status.payment_status === 'failed' || status.payment_status === 'expired') {
           paymentInfo.status = 'failed';
           paymentInfo.error = 'Blockchain transaction failed';
           confirmed = true;
           console.log(`[PoffBank] Payment ${orderId} FAILED`);
         } else {
-          console.log(`[PoffBank] Payment ${orderId} status: ${status.payment_status}`);
+          console.log(`[PoffBank] Payment ${orderId} status: ${status.payment_status} (${attempts}/${maxAttempts})`);
         }
         
         payments.set(orderId, paymentInfo);

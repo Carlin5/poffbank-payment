@@ -231,28 +231,49 @@ generateBlockchainHash = () => {
     ).join('');
 };
 
-// Check if backend is available
-checkBackendHealth = async () => {
-    try {
-        const response = await fetch(`${CONFIG.apiUrl}/api/health`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        return response.ok;
-    } catch (error) {
-        console.error('Backend health check failed:', error);
-        return false;
+// Check if backend is available (with timeout for Render cold start)
+checkBackendHealth = async (retries = 3) => {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            
+            const response = await fetch(`${CONFIG.apiUrl}/api/health`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (response.ok) return true;
+            
+            // If not ok, wait and retry
+            if (i < retries - 1) {
+                await new Promise(r => setTimeout(r, 2000));
+            }
+        } catch (error) {
+            console.log(`Backend health check attempt ${i + 1} failed:`, error.message);
+            // Wait 2 seconds before retry
+            if (i < retries - 1) {
+                await new Promise(r => setTimeout(r, 2000));
+            }
+        }
     }
+    return false;
 };
 
 // Main payment processing - API Integration
 processPayment = async (formData) => {
     const amount = parseFloat(formData.amount);
     
-    // Check backend availability first
+    // Check backend availability first (with cold start handling)
+    elements.modalTitle.textContent = 'Connecting...';
+    elements.modalText.textContent = 'Waking up payment server (this may take a moment)...';
+    
     const backendAvailable = await checkBackendHealth();
     if (!backendAvailable) {
-        alert('Payment server is temporarily unavailable. Please try again in a few moments.');
+        alert('Payment server is starting up. Please wait 30 seconds and try again.');
         return;
     }
     

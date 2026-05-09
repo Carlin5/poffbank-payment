@@ -16,8 +16,13 @@ const NOWPAYMENTS_API_URL = 'https://api.nowpayments.io/v1';
 // TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh
 // All USDT payments will be sent to this wallet
 
-// Middleware
-app.use(cors());
+// Middleware - CORS configured to allow Netlify frontend
+app.use(cors({
+  origin: ['https://carlin5.netlify.app', 'http://localhost:3000', 'http://127.0.0.1:5500'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static('.')); // Serve static files from current directory
 

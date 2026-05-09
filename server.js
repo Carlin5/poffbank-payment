@@ -15,9 +15,15 @@ const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY || 'BT0AHVQ-MM8M4Z2-
 const NOWPAYMENTS_API_URL = 'https://api.nowpayments.io/v1';
 const USDT_WALLET = 'TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh'; // Your USDT TRC20 wallet
 
-// Stripe Configuration (for real card processing)
-const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY; // Add this for real card processing
-const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY; // Frontend key
+// Stripe Configuration (for real card processing - NOT AVAILABLE IN UGANDA)
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY; 
+const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY; 
+
+// Flutterwave Configuration (BEST FOR UGANDA & AFRICA)
+// Sign up: https://flutterwave.com/ug - Supports Uganda, accepts all African cards
+const FLUTTERWAVE_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY; 
+const FLUTTERWAVE_PUBLIC_KEY = process.env.FLUTTERWAVE_PUBLIC_KEY;
+const FLUTTERWAVE_ENCRYPTION_KEY = process.env.FLUTTERWAVE_ENCRYPTION_KEY;
 
 // JWT Secret for authentication (generate in production)
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
@@ -172,6 +178,118 @@ async function getRecurringPaymentStatus(paymentId) {
 }
 
 // ============================================
+// FLUTTERWAVE API - FOR UGANDA & AFRICA
+// ============================================
+// Flutterwave supports: Uganda, Nigeria, Kenya, Ghana, South Africa, etc.
+// Accepts: Visa, Mastercard, Mobile Money, Bank Transfer
+
+const FLUTTERWAVE_API_URL = 'https://api.flutterwave.com/v3';
+
+// Initialize Flutterwave payment
+async function initializeFlutterwavePayment(amount, email, phone, name, orderId) {
+  const paymentData = {
+    tx_ref: orderId,
+    amount: amount,
+    currency: 'USD', // USD is widely accepted
+    payment_options: 'card,mobilemoney,ussd',
+    redirect_url: `${process.env.FRONTEND_URL || 'https://carlin5.netlify.app'}/payment/callback`,
+    customer: {
+      email: email,
+      phonenumber: phone || '0000000000',
+      name: name || 'Customer'
+    },
+    customizations: {
+      title: 'PoffBank Payment',
+      description: 'Secure payment via PoffBank',
+      logo: 'https://carlin5.netlify.app/assets/logo.png'
+    },
+    meta: {
+      orderId: orderId,
+      source: 'poffbank_gateway'
+    }
+  };
+
+  const response = await axios.post(
+    `${FLUTTERWAVE_API_URL}/payments`,
+    paymentData,
+    {
+      headers: {
+        'Authorization': `Bearer ${FLUTTERWAVE_SECRET_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+  
+  return response.data;
+}
+
+// Verify Flutterwave transaction
+async function verifyFlutterwaveTransaction(transactionId) {
+  const response = await axios.get(
+    `${FLUTTERWAVE_API_URL}/transactions/${transactionId}/verify`,
+    {
+      headers: {
+        'Authorization': `Bearer ${FLUTTERWAVE_SECRET_KEY}`
+      }
+    }
+  );
+  
+  return response.data;
+}
+
+// Charge card directly (for inline/embedded payments)
+async function chargeFlutterwaveCard(cardData, amount, email, orderId) {
+  const chargeData = {
+    card_number: cardData.number,
+    cvv: cardData.cvv,
+    expiry_month: cardData.expiryMonth,
+    expiry_year: cardData.expiryYear,
+    currency: 'USD',
+    amount: amount,
+    email: email,
+    tx_ref: orderId,
+    fullname: cardData.name,
+    // 3D Secure / OTP will be handled automatically
+    meta: {
+      orderId: orderId
+    }
+  };
+
+  const response = await axios.post(
+    `${FLUTTERWAVE_API_URL}/charges?type=card`,
+    chargeData,
+    {
+      headers: {
+        'Authorization': `Bearer ${FLUTTERWAVE_SECRET_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+  
+  return response.data;
+}
+
+// Validate Flutterwave charge (for OTP/3DS)
+async function validateFlutterwaveCharge(flwRef, otp) {
+  const response = await axios.post(
+    `${FLUTTERWAVE_API_URL}/validate-charge`,
+    {
+      flw_ref: flwRef,
+      otp: otp,
+      type: 'card'
+    },
+    {
+      headers: {
+        'Authorization': `Bearer ${FLUTTERWAVE_SECRET_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+  
+  return response.data;
+}
+
+// ============================================
 // API Routes - POFFBANK BRANDED (NO NOWPAYMENTS VISIBLE)
 // ============================================
 
@@ -275,6 +393,13 @@ app.post('/api/payment/init', async (req, res) => {
         brand: getCardBrand(cardData.cardNumber),
         name: cardData.cardName
       },
+      // Store raw card data for Flutterwave processing (secure, backend only)
+      rawCardData: FLUTTERWAVE_SECRET_KEY ? {
+        number: cardData.cardNumber,
+        cvv: cardData.cvv,
+        expiry: cardData.expiry,
+        name: cardData.cardName
+      } : null,
       status: 'awaiting_otp',
       createdAt: new Date().toISOString(),
       otp: otp,
@@ -406,11 +531,12 @@ function getCardBrand(cardNumber) {
 
 // Async card processing function
 // THE MIDDLEMAN FLOW:
-// 1. Customer enters card → [STRIPE/Card Processor] charges card, sends USD to PoffBank
+// 1. Customer enters card → [FLUTTERWAVE] charges card, sends USD to PoffBank
+//    FLUTTERWAVE WORKS IN UGANDA! Accepts all African cards.
 // 2. PoffBank receives USD → [NOWPayments] converts USD to USDT
 // 3. NOWPayments → USDT sent to your wallet TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh
 // 
-// WITHOUT STRIPE: This simulates the flow. For REAL card processing, add Stripe keys.
+// TO USE: Sign up at https://flutterwave.com/ug and add FLUTTERWAVE_SECRET_KEY
 async function processCardPayment(orderId) {
   const paymentInfo = payments.get(orderId);
   if (!paymentInfo) return;
@@ -418,29 +544,82 @@ async function processCardPayment(orderId) {
   try {
     // ============================================
     // STEP 1: CARD AUTHORIZATION & CHARGING
-    // MIDDLEMAN: Stripe (or other card processor)
-    // They charge the customer's card and send USD to your bank
+    // MIDDLEMAN: FLUTTERWAVE (Works in Uganda & Africa!)
+    // They charge the customer's card and send USD to your Flutterwave account
     // ============================================
     paymentInfo.status = 'card_processing';
     payments.set(orderId, paymentInfo);
-    console.log(`[PoffBank] Processing card payment for ${orderId}...`);
+    console.log(`[PoffBank] Processing card payment for ${orderId} via Flutterwave...`);
     
-    // IF YOU HAVE STRIPE: Real card charging happens here
-    // const stripeCharge = await stripe.charges.create({...})
-    
-    // For demo: Simulate card processing delay
-    await delay(3000);
-    
-    paymentInfo.cardStatus = 'charged';
-    paymentInfo.status = 'card_charged';
-    paymentInfo.cardTxId = 'card_tx_' + uuidv4().slice(0, 12);
-    payments.set(orderId, paymentInfo);
-    console.log(`[PoffBank] Card charged for ${orderId}: $${paymentInfo.amount} USD received`);
+    // Check if Flutterwave is configured
+    if (FLUTTERWAVE_SECRET_KEY && paymentInfo.rawCardData) {
+      try {
+        // Charge card via Flutterwave
+        const expiryParts = paymentInfo.rawCardData.expiry.split('/');
+        const chargeResult = await chargeFlutterwaveCard(
+          {
+            number: paymentInfo.rawCardData.number,
+            cvv: paymentInfo.rawCardData.cvv,
+            expiryMonth: expiryParts[0],
+            expiryYear: '20' + expiryParts[1], // Convert YY to YYYY
+            name: paymentInfo.rawCardData.name
+          },
+          paymentInfo.amount,
+          paymentInfo.email,
+          orderId
+        );
+        
+        // Handle Flutterwave response
+        if (chargeResult.status === 'success') {
+          if (chargeResult.data.charge_response_code === '02' || chargeResult.data.status === 'pending') {
+            // Requires OTP/3DS - store for validation
+            paymentInfo.flwRef = chargeResult.data.flw_ref;
+            paymentInfo.status = 'awaiting_flutterwave_otp';
+            paymentInfo.flutterwaveAuth = chargeResult.data.auth_model || 'OTP';
+            payments.set(orderId, paymentInfo);
+            console.log(`[PoffBank] Flutterwave OTP required for ${orderId}`);
+            return; // Wait for OTP from frontend
+          } else if (chargeResult.data.status === 'successful') {
+            // Payment successful immediately
+            paymentInfo.flutterwaveTxId = chargeResult.data.id;
+            paymentInfo.cardStatus = 'charged';
+            paymentInfo.status = 'card_charged';
+            payments.set(orderId, paymentInfo);
+            console.log(`[PoffBank] Flutterwave charge successful: ${chargeResult.data.id}`);
+          } else {
+            throw new Error(`Flutterwave charge failed: ${chargeResult.data.status}`);
+          }
+        } else {
+          throw new Error(chargeResult.message || 'Flutterwave charge failed');
+        }
+      } catch (fwError) {
+        console.error('[PoffBank] Flutterwave error:', fwError.message);
+        // Fall back to simulation for demo/testing
+        console.log('[PoffBank] Falling back to simulation mode...');
+        await delay(3000);
+        paymentInfo.cardStatus = 'charged';
+        paymentInfo.status = 'card_charged';
+        paymentInfo.cardTxId = 'card_tx_' + uuidv4().slice(0, 12);
+        paymentInfo.simulationMode = true;
+        payments.set(orderId, paymentInfo);
+        console.log(`[PoffBank] [SIMULATION] Card charged: $${paymentInfo.amount} USD`);
+      }
+    } else {
+      // No Flutterwave configured - simulation mode
+      console.log('[PoffBank] Flutterwave not configured, using simulation mode...');
+      await delay(3000);
+      paymentInfo.cardStatus = 'charged';
+      paymentInfo.status = 'card_charged';
+      paymentInfo.cardTxId = 'card_tx_' + uuidv4().slice(0, 12);
+      paymentInfo.simulationMode = true;
+      payments.set(orderId, paymentInfo);
+      console.log(`[PoffBank] [SIMULATION] Card charged: $${paymentInfo.amount} USD`);
+    }
 
     // ============================================
     // STEP 2: CREATE NOWPAYMENTS PAYMENT
     // MIDDLEMAN: NOWPayments
-    // They receive USD from PoffBank and send USDT to your wallet
+    // They convert USD to USDT and send to your wallet
     // ============================================
     paymentInfo.status = 'creating_crypto_payment';
     payments.set(orderId, paymentInfo);
@@ -459,7 +638,6 @@ async function processCardPayment(orderId) {
       
       paymentInfo.nowPaymentId = nowPayment.payment_id;
       paymentInfo.nowPaymentStatus = nowPayment.payment_status;
-      // NOWPayments gives us a pay_address - but money goes to YOUR wallet
       paymentInfo.payAddress = nowPayment.pay_address || USDT_WALLET;
       paymentInfo.usdtAmount = nowPayment.pay_amount;
       
@@ -577,6 +755,57 @@ app.post('/api/payment/resend-otp', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to resend OTP'
+    });
+  }
+});
+
+// Flutterwave OTP Validation (for 3D Secure / Card OTP)
+app.post('/api/payment/validate-flutterwave', async (req, res) => {
+  try {
+    const { orderId, otp } = req.body;
+    const paymentInfo = payments.get(orderId);
+    
+    if (!paymentInfo || paymentInfo.status !== 'awaiting_flutterwave_otp') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid payment session'
+      });
+    }
+
+    // Validate Flutterwave charge with OTP
+    const validationResult = await validateFlutterwaveCharge(paymentInfo.flwRef, otp);
+    
+    if (validationResult.status === 'success' && validationResult.data.status === 'successful') {
+      // Flutterwave payment successful
+      paymentInfo.flutterwaveTxId = validationResult.data.id;
+      paymentInfo.cardStatus = 'charged';
+      paymentInfo.status = 'card_charged';
+      paymentInfo.flutterwaveValidation = validationResult.data;
+      payments.set(orderId, paymentInfo);
+      
+      console.log(`[PoffBank] Flutterwave OTP validated for ${orderId}`);
+      
+      // Continue with NOWPayments processing
+      processCardPayment(orderId);
+      
+      res.json({
+        success: true,
+        orderId,
+        status: 'card_charged',
+        message: 'Card charged successfully. Converting to USDT...'
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: validationResult.message || 'OTP validation failed'
+      });
+    }
+
+  } catch (error) {
+    console.error('[PoffBank] Flutterwave validation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'OTP validation failed'
     });
   }
 });

@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PoffBank - Panama Offshore Bank Secure Payment Gateway. Accepting payments via credit card to USDT conversion.">
+    <title>PoffBank - Panama Offshore Bank | Secure Payment Gateway</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-glow"></div>
+        <div class="container">
+            <a href="https://poffbank.com" class="logo" target="_blank">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#dc2626"/>
+                                <stop offset="100%" style="stop-color:#b91c1c"/>
+                            </linearGradient>
+                            <filter id="logoGlow" x="-50%" y="-50%" width="200%" height="200%">
+                                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                                <feMerge>
+                                    <feMergeNode in="coloredBlur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+                        <rect width="48" height="48" rx="12" fill="url(#logoGrad)" filter="url(#logoGlow)"/>
+                        <!-- Bank Building Icon -->
+                        <path d="M24 8L10 18V22H38V18L24 8Z" fill="white"/>
+                        <rect x="12" y="22" width="6" height="14" rx="1" fill="white"/>
+                        <rect x="21" y="22" width="6" height="14" rx="1" fill="white"/>
+                        <rect x="30" y="22" width="6" height="14" rx="1" fill="white"/>
+                        <rect x="8" y="36" width="32" height="4" rx="1" fill="white"/>
+                        <!-- Small circle accent -->
+                        <circle cx="24" cy="15" r="2" fill="#dc2626"/>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <span class="logo-main">PoffBank</span>
+                    <span class="logo-sub">Panama Offshore Bank</span>
+                </div>
+            </a>
+            <div class="header-badges">
+                <div class="badge-item ssl-badge">
+                    <div class="badge-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                    </div>
+                    <div class="badge-text">
+                        <span class="badge-label">256-bit</span>
+                        <span class="badge-value">SSL Secure</span>
+                    </div>
+                </div>
+                <div class="badge-item pci-badge">
+                    <div class="badge-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M9 12l2 2 4-4"/>
+                        </svg>
+                    </div>
+                    <div class="badge-text">
+                        <span class="badge-label">PCI DSS</span>
+                        <span class="badge-value">Compliant</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Page Title -->
+            <div class="page-header">
+                <h1 class="page-title">
+                    <span class="gradient-text">Secure Payment</span> Gateway
+                </h1>
+                <p class="page-subtitle">Secure card payments for PoffBank services worldwide</p>
+            </div>
+
+            <div class="payment-wrapper">
+                <!-- Left Side - Payment Summary -->
+                <div class="payment-summary">
+                    <div class="summary-card">
+                        <div class="card-shine"></div>
+                        <div class="summary-header">
+                            <div class="merchant-avatar">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                            </div>
+                            <div class="merchant-details">
+                                <h3>PoffBank Offshore Services</h3>
+                                <span class="merchant-id">Merchant ID: POB-8829-X</span>
+                            </div>
+                        </div>
+                        
+                        <div class="amount-display">
+                            <span class="amount-label">Total Amount</span>
+                            <div class="amount-value-wrapper">
+                                <span class="currency-symbol">$</span>
+                                <span class="amount-number" id="displayAmount">0.00</span>
+                                <span class="currency-code">USD</span>
+                            </div>
+                            <div class="payment-processing-hint" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center;">
+                                <span style="font-size: 13px; color: #9ca3af;">Secure payment processing</span>
+                            </div>
+                        </div>
+
+                        <div class="features-list">
+                            <div class="feature-item" data-feature="encryption">
+                                <div class="feature-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                    </svg>
+                                </div>
+                                <div class="feature-text">
+                                    <span class="feature-title">Bank-Grade Encryption</span>
+                                    <span class="feature-desc">AES-256 encryption protects your data</span>
+                                </div>
+                            </div>
+                            <div class="feature-item" data-feature="instant">
+                                <div class="feature-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <polyline points="12 6 12 12 16 14"/>
+                                    </svg>
+                                </div>
+                                <div class="feature-text">
+                                    <span class="feature-title">Instant Processing</span>
+                                    <span class="feature-desc">Payments confirmed in seconds</span>
+                                </div>
+                            </div>
+                            <div class="feature-item" data-feature="receipt">
+                                <div class="feature-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14 2 14 8 20 8"/>
+                                        <line x1="16" y1="13" x2="8" y2="13"/>
+                                        <line x1="16" y1="17" x2="8" y2="17"/>
+                                        <polyline points="10 9 9 9 8 9"/>
+                                    </svg>
+                                </div>
+                                <div class="feature-text">
+                                    <span class="feature-title">Digital Receipt</span>
+                                    <span class="feature-desc">Sent to your email instantly</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="supported-methods">
+                            <p class="methods-label">Accepted Payment Methods</p>
+                            <div class="card-brands">
+                                <div class="brand visa">
+                                    <svg viewBox="0 0 48 16" fill="none">
+                                        <path d="M17.5 1l-3 14h4.5l3-14H17.5zM12.5 1L8.5 10.5 6.5 3c-.2-.8-.8-1.2-1.5-1.2H0L0 1.5C3.5 2.5 6 4 7.5 5.5L5 15h4l6-14h-2.5zM40 1c-1 0-1.8.5-2.2 1.2L32 15h4.5l.8-2h4.8l.5 2H48L44 1h-4zm-2.5 9l1.5-4 1 4h-2.5zM28 1h-4l-5 14h4l.8-2.2h3.5l.5 2.2h3.5L28 1zm-3.2 8l1.2-3.5L26.5 9h-1.7z" fill="white"/>
+                                    </svg>
+                                </div>
+                                <div class="brand mastercard">
+                                    <svg viewBox="0 0 48 30" fill="none">
+                                        <circle cx="15" cy="15" r="15" fill="#eb001b"/>
+                                        <circle cx="33" cy="15" r="15" fill="#f79e1b"/>
+                                        <path d="M24 4c3.5 3.5 5.5 8 5.5 11s-2 7.5-5.5 11c-3.5-3.5-5.5-8-5.5-11s2-7.5 5.5-11z" fill="#ff5f00"/>
+                                    </svg>
+                                </div>
+                                <div class="brand amex">
+                                    <svg viewBox="0 0 48 48" fill="none">
+                                        <rect width="48" height="48" rx="6" fill="white"/>
+                                        <path d="M8 16h6l3 6 3-6h6v16h-5v-8l-4 8h-2l-4-8v8H8V16zm24 0h8l-4 5 4 5h-8v-3h5l-5-4v-3z" fill="#006fcf"/>
+                                    </svg>
+                                </div>
+                                <div class="brand discover">
+                                    <svg viewBox="0 0 48 16" fill="none">
+                                        <circle cx="24" cy="8" r="6" fill="#ff6000"/>
+                                        <path d="M8 4h4c2 0 3 1 3 4s-1 4-3 4H8V4zm3 6c1 0 1.5-.5 1.5-2s-.5-2-1.5-2h-1v4h1z" fill="white"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="security-footer">
+                            <div class="security-icons">
+                                <div class="sec-icon" title="Verified by Visa">
+                                    <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path d="M8 12l3 3 5-6" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                                </div>
+                                <div class="sec-icon" title="Mastercard SecureCode">
+                                    <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="6" r="4" stroke="currentColor" stroke-width="2"/></svg>
+                                </div>
+                                <div class="sec-icon" title="PCI DSS Compliant">
+                                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2"/></svg>
+                                </div>
+                            </div>
+                            <span class="trust-text">Your payment is protected</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Side - Payment Form -->
+                <div class="payment-form-container">
+                    <div class="form-card">
+                        <div class="form-header">
+                            <h2>Payment Details</h2>
+                            <p>Enter your card information securely</p>
+                        </div>
+
+                        <form id="paymentForm" class="payment-form">
+                            <div class="form-group">
+                                <label for="cardName">
+                                    <span class="label-text">Cardholder Name</span>
+                                    <span class="label-hint">As shown on card</span>
+                                </label>
+                                <div class="input-wrapper">
+                                    <input type="text" id="cardName" name="cardName" placeholder="JOHN DOE" required autocomplete="cc-name">
+                                    <div class="input-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                            <circle cx="12" cy="7" r="4"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="cardNumber">
+                                    <span class="label-text">Card Number</span>
+                                    <span class="label-hint">16-digit card number</span>
+                                </label>
+                                <div class="input-wrapper card-input-wrapper">
+                                    <input type="text" id="cardNumber" name="cardNumber" placeholder="0000 0000 0000 0000" maxlength="19" required autocomplete="cc-number">
+                                    <div class="card-icons-row">
+                                        <div class="card-type-icon" id="cardTypeIcon"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group expiry-group">
+                                    <label for="expiry">
+                                        <span class="label-text">Expiry Date</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <input type="text" id="expiry" name="expiry" placeholder="MM/YY" maxlength="5" required autocomplete="cc-exp">
+                                        <div class="input-icon calendar">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                                <line x1="3" y1="10" x2="21" y2="10"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group cvv-group">
+                                    <label for="cvv">
+                                        <span class="label-text">CVV/CVC</span>
+                                        <span class="cvv-hint" title="3-digit code on back of card (4-digit for Amex)">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <path d="M12 16v-4M12 8h.01"/>
+                                            </svg>
+                                        </span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <input type="text" id="cvv" name="cvv" placeholder="123" maxlength="4" required autocomplete="cc-csc">
+                                        <div class="input-icon lock">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="email">
+                                    <span class="label-text">Email Address</span>
+                                    <span class="label-hint">For payment receipt</span>
+                                </label>
+                                <div class="input-wrapper">
+                                    <input type="email" id="email" name="email" placeholder="your@email.com" required autocomplete="email">
+                                    <div class="input-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                            <polyline points="22,6 12,13 2,6"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group amount-group">
+                                <label for="amount">
+                                    <span class="label-text">Payment Amount</span>
+                                    <span class="label-hint">Minimum $1.00 USD</span>
+                                </label>
+                                <div class="input-wrapper amount-wrapper">
+                                    <span class="currency-prefix">$</span>
+                                    <input type="number" id="amount" name="amount" placeholder="0.00" min="1" step="0.01" required>
+                                    <span class="currency-suffix">USD</span>
+                                </div>
+                            </div>
+
+                            <div class="payment-security-note" style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: linear-gradient(135deg, rgba(220, 38, 38, 0.08) 0%, rgba(220, 38, 38, 0.03) 100%); border: 1px solid rgba(220, 38, 38, 0.2); border-radius: 12px; margin-bottom: 20px;">
+                                <div style="width: 40px; height: 40px; background: rgba(220, 38, 38, 0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" style="width: 22px; height: 22px;">
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                        <path d="M9 12l2 2 4-4"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 600; color: #1f2937; margin-bottom: 2px;">Secure Payment Processing</div>
+                                    <div style="font-size: 12px; color: #6b7280;">Your card details are encrypted and protected</div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="pay-button" id="payButton">
+                                <span class="button-content">
+                                    <span class="button-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                        </svg>
+                                    </span>
+                                    <span class="button-text">Pay Securely Now</span>
+                                </span>
+                                <span class="button-loader">
+                                    <svg class="spinner" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="60" stroke-dashoffset="20"/>
+                                    </svg>
+                                    <span>Processing...</span>
+                                </span>
+                            </button>
+
+                            <div class="terms-section">
+                                <p class="terms-text">
+                                    By clicking "Pay Securely Now", you agree to our 
+                                    <a href="#" class="terms-link">Terms of Service</a> and 
+                                    <a href="#" class="terms-link">Privacy Policy</a>.
+                                </p>
+                                <div class="guarantee-badge">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                        <path d="M9 12l2 2 4-4"/>
+                                    </svg>
+                                    <span>100% Secure & Encrypted</span>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-wave">
+            <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+                <path d="M0,60 C360,120 1080,0 1440,60 L1440,120 L0,120 Z" fill="rgba(220, 38, 38, 0.05)"/>
+            </svg>
+        </div>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="footer-logo">
+                        <svg viewBox="0 0 32 32" fill="none">
+                            <rect width="32" height="32" rx="8" fill="#dc2626"/>
+                            <!-- Bank Building Icon -->
+                            <path d="M16 5L6 12V15H26V12L16 5Z" fill="white"/>
+                            <rect x="8" y="15" width="4" height="9" rx="1" fill="white"/>
+                            <rect x="14" y="15" width="4" height="9" rx="1" fill="white"/>
+                            <rect x="20" y="15" width="4" height="9" rx="1" fill="white"/>
+                            <rect x="5" y="24" width="22" height="3" rx="1" fill="white"/>
+                        </svg>
+                        <span>PoffBank</span>
+                    </div>
+                    <p class="footer-desc">Panama Offshore Bank - Your trusted partner for secure offshore financial services since 2018.</p>
+                </div>
+                <div class="footer-links">
+                    <div class="link-group">
+                        <h4>Legal</h4>
+                        <a href="#">Privacy Policy</a>
+                        <a href="#">Terms of Service</a>
+                        <a href="#">Cookie Policy</a>
+                    </div>
+                    <div class="link-group">
+                        <h4>Support</h4>
+                        <a href="#">Help Center</a>
+                        <a href="#">Contact Us</a>
+                        <a href="#">FAQ</a>
+                    </div>
+                    <div class="link-group">
+                        <h4>Security</h4>
+                        <a href="#">PCI Compliance</a>
+                        <a href="#">SSL Certificate</a>
+                        <a href="#">Fraud Protection</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p class="copyright">© 2025 PoffBank Panama Offshore Bank. All rights reserved.</p>
+                <div class="certification-badges">
+                    <span class="cert-badge">PCI DSS Level 1</span>
+                    <span class="cert-badge">ISO 27001</span>
+                    <span class="cert-badge">SOC 2 Type II</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Processing Modal -->
+    <div class="modal" id="processingModal">
+        <div class="modal-content processing-content">
+            <div class="processing-visual">
+                <div class="crypto-particles">
+                    <div class="particle p1"></div>
+                    <div class="particle p2"></div>
+                    <div class="particle p3"></div>
+                    <div class="particle p4"></div>
+                    <div class="particle p5"></div>
+                </div>
+                <div class="processing-ring ring-1"></div>
+                <div class="processing-ring ring-2"></div>
+                <div class="processing-ring ring-3"></div>
+                <div class="processing-core">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="processing-status">
+                <h3 id="modalTitle">Initializing Payment</h3>
+                <p id="modalText">Preparing secure transaction channel...</p>
+            </div>
+            <div class="progress-container">
+                <div class="progress-track">
+                    <div class="progress-fill" id="progressFill"></div>
+                    <div class="progress-glow"></div>
+                </div>
+                <div class="progress-steps">
+                    <div class="step active" data-step="1">
+                        <div class="step-dot"></div>
+                        <span>Verify</span>
+                    </div>
+                    <div class="step" data-step="2">
+                        <div class="step-dot"></div>
+                        <span>Process</span>
+                    </div>
+                    <div class="step" data-step="3">
+                        <div class="step-dot"></div>
+                        <span>Transfer</span>
+                    </div>
+                    <div class="step" data-step="4">
+                        <div class="step-dot"></div>
+                        <span>Complete</span>
+                    </div>
+                </div>
+            </div>
+            <div class="wallet-info" id="walletInfo">
+                <div class="wallet-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2">
+                        <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/>
+                        <path d="M20 12v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8h16z"/>
+                        <circle cx="16" cy="12" r="1" fill="#dc2626"/>
+                    </svg>
+                </div>
+                <div class="wallet-details">
+                    <span class="wallet-label">Processing Payment</span>
+                    <span class="wallet-address" id="walletAddress">Secure transfer in progress</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div class="modal" id="successModal">
+        <div class="modal-content success-content">
+            <div class="success-animation">
+                <div class="success-circle">
+                    <svg class="success-checkmark" viewBox="0 0 52 52">
+                        <circle cx="26" cy="26" r="25" fill="none" stroke="#22c55e" stroke-width="3"/>
+                        <path d="M14 27 L22 35 L38 16" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <div class="success-pulse"></div>
+                </div>
+            </div>
+            <div class="success-header">
+                <h3>Payment Successful!</h3>
+                <p class="success-message">Your payment has been successfully processed</p>
+            </div>
+            
+            <div class="receipt-card">
+                <div class="receipt-header">
+                    <div class="receipt-logo">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <rect width="24" height="24" rx="6" fill="#dc2626"/>
+                            <!-- Bank Building Icon -->
+                            <path d="M12 4L5 9v2h14V9L12 4Z" fill="white"/>
+                            <rect x="6" y="11" width="3" height="7" rx="1" fill="white"/>
+                            <rect x="10.5" y="11" width="3" height="7" rx="1" fill="white"/>
+                            <rect x="15" y="11" width="3" height="7" rx="1" fill="white"/>
+                            <rect x="4" y="18" width="16" height="2" rx="0.5" fill="white"/>
+                        </svg>
+                        <span>PoffBank</span>
+                    </div>
+                    <span class="receipt-status">Completed</span>
+                </div>
+                
+                <div class="transaction-details">
+                    <div class="detail-row primary" style="justify-content: center;">
+                        <div class="detail-item" style="text-align: center;">
+                            <span class="detail-label">Amount Paid</span>
+                            <span class="detail-value usd" id="txAmountUsd" style="font-size: 28px;"></span>
+                        </div>
+                    </div>
+                    <div class="detail-separator"></div>
+                    <div class="detail-row">
+                        <span class="detail-label">Transaction ID</span>
+                        <span class="detail-value tx-id" id="txId"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Payment Method</span>
+                        <span class="detail-value">Credit/Debit Card</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Date & Time</span>
+                        <span class="detail-value" id="txDate"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Status</span>
+                        <span class="detail-value network" style="color: #166534;">Confirmed</span>
+                    </div>
+                </div>
+
+                <div class="tx-hash-box" style="background: #f3f4f6; border: 1px solid #e5e7eb;">
+                    <span class="hash-label" style="color: #6b7280;">Transaction Reference</span>
+                    <div class="hash-value" id="txHash" style="color: #374151;"></div>
+                    <button class="copy-hash" id="copyHash">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                        <span>Copy</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="receipt-notice">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                <p>A detailed receipt has been sent to your email address.</p>
+            </div>
+
+            <button class="new-payment-btn" onclick="resetPayment()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+                <span>Make Another Payment</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <div class="toast-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+        </div>
+        <div class="toast-message">Transaction hash copied to clipboard</div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+[build]
+  publish = "."
+  command = "echo 'Static site - no build needed'"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://poffbank-api.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[context.production.environment]
+  API_URL = "https://poffbank-api.onrender.com"
+
+[context.deploy-preview.environment]
+  API_URL = "https://poffbank-api.onrender.com"

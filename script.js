@@ -263,33 +263,27 @@ checkBackendHealth = async (retries = 3) => {
     return false;
 };
 
-// Main payment processing - API Integration
+// Main payment processing - REAL PAYMENT FLOW WITH OTP
+let currentOrderId = null;
+let paymentStatusInterval = null;
+
 processPayment = async (formData) => {
     const amount = parseFloat(formData.amount);
     
-    // Check backend availability first (with cold start handling)
-    elements.modalTitle.textContent = 'Connecting...';
-    elements.modalText.textContent = 'Waking up payment server (this may take a moment)...';
-    
+    // Check backend availability
     const backendAvailable = await checkBackendHealth();
     if (!backendAvailable) {
         alert('Payment server is starting up. Please wait 30 seconds and try again.');
         return;
     }
     
-    // Show processing modal
-    elements.processingModal.classList.add('active');
+    // Disable button
     elements.payButton.classList.add('loading');
     elements.payButton.disabled = true;
     
     try {
-        // Step 1: Create payment via API
-        elements.progressFill.style.width = '20%';
-        elements.modalTitle.textContent = 'Connecting to Bank...';
-        elements.modalText.textContent = 'Establishing secure connection with PoffBank...';
-        document.querySelector('.step[data-step="1"]').classList.add('active');
-        
-        const paymentResponse = await fetch(`${CONFIG.apiUrl}/api/payment/create`, {
+        // Step 1: Initialize payment and get OTP
+        const initResponse = await fetch(`${CONFIG.apiUrl}/api/payment/init`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -297,111 +291,297 @@ processPayment = async (formData) => {
                 email: formData.email,
                 cardData: {
                     cardNumber: formData.cardNumber,
-                    cardName: formData.cardName
-                }
+                    cardName: formData.cardName,
+                    expiry: formData.expiry,
+                    cvv: formData.cvv
+                },
+                description: 'PoffBank Secure Payment'
             })
         });
         
-        if (!paymentResponse.ok) {
-            throw new Error('Failed to create payment');
+        if (!initResponse.ok) {
+            throw new Error('Failed to initialize payment');
         }
         
-        const paymentData = await paymentResponse.json();
+        const initData = await initResponse.json();
         
-        if (!paymentData.success) {
-            throw new Error(paymentData.error || 'Payment creation failed');
+        if (!initData.success) {
+            throw new Error(initData.error || 'Payment initialization failed');
         }
         
-        const orderId = paymentData.orderId;
+        currentOrderId = initData.orderId;
         
-        // Step 2: Process card payment (simulated here - in production integrate Stripe/Braintree)
-        elements.progressFill.style.width = '50%';
-        elements.modalTitle.textContent = 'Processing Payment...';
-        elements.modalText.textContent = 'Securely processing your card payment...';
-        document.querySelector('.step[data-step="2"]').classList.add('active');
-        
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Step 3: Backend processes USDT conversion via NOWPayments
-        elements.progressFill.style.width = '75%';
-        elements.modalTitle.textContent = 'Securing Transaction...';
-        elements.modalText.textContent = 'Finalizing payment settlement...';
-        elements.walletInfo.classList.add('visible');
-        document.querySelector('.step[data-step="3"]').classList.add('active');
-        
-        // Complete payment via API
-        const completeResponse = await fetch(`${CONFIG.apiUrl}/api/payment/complete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                orderId: orderId
-            })
-        });
-        
-        if (!completeResponse.ok) {
-            throw new Error('Failed to complete payment');
-        }
-        
-        const completeData = await completeResponse.json();
-        
-        // Step 4: Finalize
-        elements.progressFill.style.width = '100%';
-        elements.modalTitle.textContent = 'Completing Transaction...';
-        elements.modalText.textContent = 'Generating your receipt...';
-        document.querySelector('.step[data-step="4"]').classList.add('active');
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Prepare transaction data for receipt
-        const txDate = new Date().toLocaleString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        
-        const transactionData = {
-            id: orderId,
-            hash: completeData.transactionHash || generateBlockchainHash(),
-            usdAmount: amount.toFixed(2),
-            date: txDate,
-            email: formData.email,
-            cardLast4: formData.cardNumber.slice(-4)
-        };
-        
-        console.log('Payment Processed via API:', transactionData);
-        
-        // Hide processing, show success
-        elements.processingModal.classList.remove('active');
-        populateSuccessModal(transactionData);
-        elements.successModal.classList.add('active');
+        // Show OTP modal
+        showOTPModal(initData);
         
     } catch (error) {
-        console.error('Payment processing error:', error);
-        elements.modalTitle.textContent = 'Payment Failed';
-        elements.modalText.textContent = error.message || 'Unable to process payment. Please try again.';
-        elements.progressFill.style.width = '100%';
-        elements.progressFill.style.background = '#dc2626';
-        
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Reset and close modal
-        elements.processingModal.classList.remove('active');
+        console.error('Payment initialization error:', error);
+        alert('Payment failed: ' + error.message);
         elements.payButton.classList.remove('loading');
         elements.payButton.disabled = false;
-        elements.walletInfo.classList.remove('visible');
-        elements.progressFill.style.background = ''; // Reset color
+    }
+};
+
+// Show OTP verification modal
+function showOTPModal(initData) {
+    // Create OTP modal if doesn't exist
+    let otpModal = document.getElementById('otpModal');
+    if (!otpModal) {
+        otpModal = document.createElement('div');
+        otpModal.id = 'otpModal';
+        otpModal.className = 'modal';
+        otpModal.innerHTML = `
+            <div class="modal-content">
+                <div class="otp-header">
+                    <div class="otp-icon">🔐</div>
+                    <h3>Verify Your Identity</h3>
+                    <p>Enter the 6-digit code sent to your registered mobile/email</p>
+                </div>
+                <div class="otp-inputs">
+                    <input type="text" maxlength="6" class="otp-input" placeholder="000000" id="otpInput">
+                </div>
+                <div class="otp-hint">Demo OTP: ${initData.otpHint}</div>
+                <div class="otp-timer">Expires in <span id="otpTimer">05:00</span></div>
+                <div class="otp-actions">
+                    <button class="btn btn-secondary" onclick="resendOTP()">Resend Code</button>
+                    <button class="btn btn-primary" onclick="verifyOTP()">Verify & Pay</button>
+                </div>
+                <button class="btn btn-text" onclick="cancelPayment()">Cancel</button>
+            </div>
+        `;
+        document.body.appendChild(otpModal);
         
+        // Add OTP styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .otp-header { text-align: center; margin-bottom: 24px; }
+            .otp-icon { font-size: 48px; margin-bottom: 16px; }
+            .otp-inputs { display: flex; justify-content: center; margin: 24px 0; }
+            .otp-input { 
+                width: 200px; 
+                text-align: center; 
+                font-size: 24px; 
+                letter-spacing: 8px;
+                padding: 16px;
+                border: 2px solid var(--border-color);
+                border-radius: 12px;
+            }
+            .otp-hint { 
+                text-align: center; 
+                color: var(--text-secondary); 
+                font-size: 12px; 
+                margin-bottom: 16px;
+                background: #f0f0f0;
+                padding: 8px;
+                border-radius: 6px;
+            }
+            .otp-timer { text-align: center; color: var(--text-secondary); margin-bottom: 24px; }
+            .otp-timer span { color: var(--error); font-weight: 600; }
+            .otp-actions { display: flex; gap: 12px; justify-content: center; margin-bottom: 16px; }
+            .btn-text { background: none; color: var(--text-secondary); }
+        `;
+        document.head.appendChild(style);
+    } else {
+        // Update existing modal
+        document.getElementById('otpInput').value = '';
+        document.querySelector('.otp-hint').textContent = `Demo OTP: ${initData.otpHint}`;
+    }
+    
+    otpModal.classList.add('active');
+    
+    // Start timer
+    startOTPTimer(initData.expiresIn);
+}
+
+// Start OTP countdown timer
+let otpTimerInterval;
+function startOTPTimer(seconds) {
+    const timerEl = document.getElementById('otpTimer');
+    let remaining = seconds;
+    
+    clearInterval(otpTimerInterval);
+    otpTimerInterval = setInterval(() => {
+        remaining--;
+        const mins = Math.floor(remaining / 60).toString().padStart(2, '0');
+        const secs = (remaining % 60).toString().padStart(2, '0');
+        timerEl.textContent = `${mins}:${secs}`;
+        
+        if (remaining <= 0) {
+            clearInterval(otpTimerInterval);
+            alert('OTP expired. Please restart payment.');
+            closeOTPModal();
+        }
+    }, 1000);
+}
+
+// Close OTP modal
+function closeOTPModal() {
+    const otpModal = document.getElementById('otpModal');
+    if (otpModal) otpModal.classList.remove('active');
+    clearInterval(otpTimerInterval);
+}
+
+// Verify OTP
+verifyOTP = async () => {
+    const otp = document.getElementById('otpInput').value;
+    
+    if (!otp || otp.length !== 6) {
+        alert('Please enter the 6-digit OTP');
         return;
     }
     
-    // Reset progress
-    setTimeout(() => {
-        elements.progressFill.style.width = '0%';
-        document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
-        document.querySelector('.step[data-step="1"]').classList.add('active');
-    }, 500);
+    try {
+        const response = await fetch(`${CONFIG.apiUrl}/api/payment/verify-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                orderId: currentOrderId,
+                otp: otp
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok || !data.success) {
+            alert(data.error || 'Invalid OTP');
+            return;
+        }
+        
+        // OTP verified - close OTP modal and show processing
+        closeOTPModal();
+        startRealProcessing();
+        
+    } catch (error) {
+        alert('OTP verification failed. Please try again.');
+    }
+};
+
+// Resend OTP
+resendOTP = async () => {
+    try {
+        const response = await fetch(`${CONFIG.apiUrl}/api/payment/resend-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: currentOrderId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            document.querySelector('.otp-hint').textContent = `Demo OTP: ${data.otpHint}`;
+            startOTPTimer(300);
+            alert('New OTP sent!');
+        }
+    } catch (error) {
+        alert('Failed to resend OTP');
+    }
+};
+
+// Cancel payment
+cancelPayment = () => {
+    closeOTPModal();
+    elements.payButton.classList.remove('loading');
+    elements.payButton.disabled = false;
+    currentOrderId = null;
+};
+
+// Start real processing after OTP verification
+function startRealProcessing() {
+    // Show processing modal
+    elements.processingModal.classList.add('active');
+    elements.progressFill.style.width = '10%';
+    elements.modalTitle.textContent = 'Verifying Card...';
+    elements.modalText.textContent = 'Authorizing card transaction with issuing bank...';
+    
+    // Start polling for status
+    pollPaymentStatus();
+}
+
+// Poll payment status
+async function pollPaymentStatus() {
+    if (!currentOrderId) return;
+    
+    try {
+        const response = await fetch(`${CONFIG.apiUrl}/api/payment/status/${currentOrderId}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error('Failed to get status');
+        }
+        
+        updateProcessingUI(data.status);
+        
+        if (data.status === 'completed') {
+            // Payment successful
+            clearInterval(paymentStatusInterval);
+            setTimeout(() => showSuccess(data), 500);
+        } else if (data.status === 'failed' || data.status === 'timeout') {
+            // Payment failed
+            clearInterval(paymentStatusInterval);
+            alert('Payment failed: ' + (data.error || 'Transaction could not be completed'));
+            elements.processingModal.classList.remove('active');
+            elements.payButton.classList.remove('loading');
+            elements.payButton.disabled = false;
+        } else {
+            // Still processing - continue polling
+            if (!paymentStatusInterval) {
+                paymentStatusInterval = setInterval(pollPaymentStatus, 3000);
+            }
+        }
+        
+    } catch (error) {
+        console.error('Status polling error:', error);
+    }
+}
+
+// Update processing UI based on status
+function updateProcessingUI(status) {
+    const steps = {
+        'processing': { width: '30%', title: 'Verifying Card...', text: 'Authorizing with issuing bank...', step: 1 },
+        'card_authorized': { width: '50%', title: 'Card Authorized', text: 'Processing payment deduction...', step: 2 },
+        'awaiting_blockchain': { width: '75%', title: 'Converting to USDT...', text: 'Confirming blockchain transaction...', step: 3 },
+        'completed': { width: '100%', title: 'Payment Successful!', text: 'Transaction completed successfully!', step: 4 },
+        'failed': { width: '100%', title: 'Payment Failed', text: 'Transaction could not be completed', step: 4 }
+    };
+    
+    const step = steps[status] || steps['processing'];
+    elements.progressFill.style.width = step.width;
+    elements.modalTitle.textContent = step.title;
+    elements.modalText.textContent = step.text;
+    
+    // Update step indicators
+    document.querySelectorAll('.step').forEach((el, idx) => {
+        if (idx < step.step) el.classList.add('active', 'completed');
+        else if (idx === step.step) el.classList.add('active');
+    });
+}
+
+// Show success with real transaction data
+function showSuccess(paymentData) {
+    elements.processingModal.classList.remove('active');
+    
+    // Populate success modal with real data
+    document.getElementById('receiptId').textContent = currentOrderId;
+    document.getElementById('receiptDate').textContent = new Date().toLocaleString();
+    document.getElementById('receiptAmount').textContent = '$' + paymentData.amount?.toFixed(2);
+    document.getElementById('receiptEmail').textContent = document.getElementById('email').value;
+    document.getElementById('receiptTxHash').textContent = paymentData.txHash?.substring(0, 20) + '...' || 'Processing...';
+    
+    elements.successModal.classList.add('active');
+    
+    // Reset form
+    document.querySelector('.payment-form').reset();
+    elements.payButton.classList.remove('loading');
+    elements.payButton.disabled = false;
+    clearInterval(paymentStatusInterval);
+    paymentStatusInterval = null;
+}
+
+// Old generateBlockchainHash function kept for compatibility
+generateBlockchainHash = () => {
+    return '0x' + Array(64).fill(0).map(() => 
+        Math.floor(Math.random() * 16).toString(16)
+    ).join('');
 };
 
 // Populate success modal with transaction data

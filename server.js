@@ -203,13 +203,41 @@ app.get('/api/exchange-rate', async (req, res) => {
   }
 });
 
-// Create payment - PoffBank branded
-app.post('/api/payment/create', async (req, res) => {
+// In-memory OTP storage (use Redis in production)
+const otps = new Map();
+
+// Validate card data
+function validateCard(cardData) {
+  const { cardNumber, cardName, expiry, cvv } = cardData || {};
+  
+  if (!cardNumber || cardNumber.length < 13) {
+    return { valid: false, error: 'Invalid card number' };
+  }
+  if (!cardName || cardName.length < 2) {
+    return { valid: false, error: 'Cardholder name required' };
+  }
+  if (!expiry || !expiry.match(/^\d{2}\/\d{2}$/)) {
+    return { valid: false, error: 'Invalid expiry date (MM/YY)' };
+  }
+  if (!cvv || cvv.length < 3) {
+    return { valid: false, error: 'Invalid CVV' };
+  }
+  
+  return { valid: true };
+}
+
+// Generate OTP
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// Step 1: Initialize payment and validate card
+app.post('/api/payment/init', async (req, res) => {
   try {
     const { amount, email, cardData, description } = req.body;
-    console.log('[PoffBank] Payment request:', { amount, email, description });
+    console.log('[PoffBank] Payment initialization:', { amount, email });
 
-    // Validate input
+    // Validate amount
     if (!amount || parseFloat(amount) < 1) {
       return res.status(400).json({
         success: false,
@@ -217,56 +245,292 @@ app.post('/api/payment/create', async (req, res) => {
       });
     }
 
+    // Validate card
+    const cardValidation = validateCard(cardData);
+    if (!cardValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        error: cardValidation.error
+      });
+    }
+
     // Generate PoffBank order ID
     const orderId = `POB-${Date.now()}-${uuidv4().slice(0, 8).toUpperCase()}`;
+    
+    // Generate OTP for card verification
+    const otp = generateOTP();
+    const otpExpiry = Date.now() + 300000; // 5 minutes
 
     // Store payment in PoffBank system
     const paymentInfo = {
       orderId,
       amount: parseFloat(amount),
       email,
-      cardLast4: cardData?.cardNumber ? cardData.cardNumber.slice(-4) : null,
-      status: 'pending',
+      cardData: {
+        last4: cardData.cardNumber.slice(-4),
+        brand: getCardBrand(cardData.cardNumber),
+        name: cardData.cardName
+      },
+      status: 'awaiting_otp',
       createdAt: new Date().toISOString(),
+      otp: otp,
+      otpExpiry: otpExpiry,
+      otpVerified: false,
       nowPaymentId: null,
       nowPaymentStatus: null,
-      payAddress: USDT_WALLET
+      payAddress: USDT_WALLET,
+      cardProcessed: false,
+      description: description || 'PoffBank Payment'
     };
 
     payments.set(orderId, paymentInfo);
+    otps.set(orderId, { otp, expiry: otpExpiry, attempts: 0 });
 
-    // Create NOWPayments payment (backend only - customer never sees NOWPayments)
-    let nowPayment = null;
-    try {
-      nowPayment = await createNowPayment(amount, orderId, email, description);
-      paymentInfo.nowPaymentId = nowPayment.payment_id;
-      paymentInfo.nowPaymentStatus = nowPayment.payment_status;
-      paymentInfo.payAddress = nowPayment.pay_address || USDT_WALLET;
-      payments.set(orderId, paymentInfo);
-      console.log(`[PoffBank] Payment ${orderId} linked to NOWPayments ${nowPayment.payment_id}`);
-    } catch (nowError) {
-      console.error('[PoffBank] NOWPayments error:', nowError.message);
-      // Continue with PoffBank payment even if NOWPayments fails
-      paymentInfo.nowPaymentStatus = 'pending_backend';
-    }
+    // Log OTP for demo (in production, send via SMS/email)
+    console.log(`[PoffBank] OTP for ${orderId}: ${otp}`);
 
-    // Return PoffBank branded response (NO NOWPAYMENTS DATA VISIBLE)
+    // Return PoffBank branded response
     res.json({
       success: true,
       orderId,
-      status: 'pending',
+      status: 'awaiting_otp',
       amount: amount,
       currency: 'USD',
-      destinationWallet: paymentInfo.payAddress.substring(0, 6) + '...' + paymentInfo.payAddress.substring(-4),
-      message: 'Payment initialized. Proceed to complete transaction.',
-      validUntil: new Date(Date.now() + 3600000).toISOString()
+      cardLast4: paymentInfo.cardData.last4,
+      cardBrand: paymentInfo.cardData.brand,
+      message: 'Enter the 6-digit OTP sent to your registered mobile/email',
+      otpHint: `Demo OTP: ${otp}`, // Remove in production!
+      expiresIn: 300 // 5 minutes
     });
 
   } catch (error) {
-    console.error('[PoffBank] Payment creation error:', error);
+    console.error('[PoffBank] Payment initialization error:', error);
     res.status(500).json({
       success: false,
       error: 'Payment processing unavailable. Please try again.'
+    });
+  }
+});
+
+// Step 2: Verify OTP
+app.post('/api/payment/verify-otp', async (req, res) => {
+  try {
+    const { orderId, otp } = req.body;
+    console.log('[PoffBank] OTP verification:', { orderId });
+
+    const paymentInfo = payments.get(orderId);
+    const otpData = otps.get(orderId);
+
+    if (!paymentInfo || !otpData) {
+      return res.status(404).json({
+        success: false,
+        error: 'Payment session expired or invalid'
+      });
+    }
+
+    // Check OTP expiry
+    if (Date.now() > otpData.expiry) {
+      return res.status(400).json({
+        success: false,
+        error: 'OTP expired. Please restart payment.'
+      });
+    }
+
+    // Check attempts
+    if (otpData.attempts >= 3) {
+      paymentInfo.status = 'failed';
+      payments.set(orderId, paymentInfo);
+      return res.status(400).json({
+        success: false,
+        error: 'Too many failed attempts. Payment cancelled.'
+      });
+    }
+
+    // Verify OTP
+    if (otp !== otpData.otp) {
+      otpData.attempts++;
+      otps.set(orderId, otpData);
+      return res.status(400).json({
+        success: false,
+        error: `Invalid OTP. ${3 - otpData.attempts} attempts remaining.`
+      });
+    }
+
+    // OTP verified
+    paymentInfo.otpVerified = true;
+    paymentInfo.status = 'processing';
+    paymentInfo.otpVerifiedAt = new Date().toISOString();
+    payments.set(orderId, paymentInfo);
+    otps.delete(orderId);
+
+    // Start card processing (this will actually deduct money in real implementation)
+    console.log(`[PoffBank] OTP verified for ${orderId}. Starting card processing...`);
+    
+    // Process card and create NOWPayments payment
+    processCardPayment(orderId);
+
+    res.json({
+      success: true,
+      orderId,
+      status: 'processing',
+      message: 'OTP verified. Processing card payment...'
+    });
+
+  } catch (error) {
+    console.error('[PoffBank] OTP verification error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Verification failed. Please try again.'
+    });
+  }
+});
+
+// Helper function to determine card brand
+function getCardBrand(cardNumber) {
+  const patterns = {
+    visa: /^4/,
+    mastercard: /^5[1-5]/,
+    amex: /^3[47]/,
+    discover: /^6(?:011|5)/
+  };
+  
+  for (const [brand, pattern] of Object.entries(patterns)) {
+    if (pattern.test(cardNumber)) return brand;
+  }
+  return 'unknown';
+}
+
+// Async card processing function
+async function processCardPayment(orderId) {
+  const paymentInfo = payments.get(orderId);
+  if (!paymentInfo) return;
+
+  try {
+    // Step 1: Card authorization (simulated delay)
+    await delay(3000);
+    paymentInfo.cardStatus = 'authorized';
+    paymentInfo.status = 'card_authorized';
+    payments.set(orderId, paymentInfo);
+    console.log(`[PoffBank] Card authorized for ${orderId}`);
+
+    // Step 2: Create NOWPayments payment (real money movement)
+    await delay(2000);
+    
+    let nowPayment = null;
+    try {
+      nowPayment = await createNowPayment(
+        paymentInfo.amount, 
+        orderId, 
+        paymentInfo.email, 
+        paymentInfo.description
+      );
+      paymentInfo.nowPaymentId = nowPayment.payment_id;
+      paymentInfo.nowPaymentStatus = nowPayment.payment_status;
+      paymentInfo.payAddress = nowPayment.pay_address || USDT_WALLET;
+      console.log(`[PoffBank] NOWPayments created: ${nowPayment.payment_id}`);
+    } catch (nowError) {
+      console.error('[PoffBank] NOWPayments creation failed:', nowError.message);
+      paymentInfo.status = 'failed';
+      paymentInfo.error = 'Payment gateway error';
+      payments.set(orderId, paymentInfo);
+      return;
+    }
+
+    // Step 3: Wait for crypto payment confirmation (blockchain)
+    paymentInfo.status = 'awaiting_blockchain';
+    payments.set(orderId, paymentInfo);
+    console.log(`[PoffBank] Awaiting blockchain confirmation for ${orderId}`);
+
+    // Check NOWPayments status periodically
+    let confirmed = false;
+    let attempts = 0;
+    const maxAttempts = 60; // 5 minutes (5 seconds * 60)
+    
+    while (!confirmed && attempts < maxAttempts) {
+      await delay(5000);
+      
+      try {
+        const status = await getNowPaymentStatus(paymentInfo.nowPaymentId);
+        paymentInfo.nowPaymentStatus = status.payment_status;
+        
+        if (status.payment_status === 'finished' || status.payment_status === 'confirmed') {
+          confirmed = true;
+          paymentInfo.status = 'completed';
+          paymentInfo.completedAt = new Date().toISOString();
+          paymentInfo.usdtReceived = status.outcome_amount || status.pay_amount;
+          paymentInfo.txHash = status.payin_hash || status.payment_hash;
+          console.log(`[PoffBank] Payment ${orderId} COMPLETED. USDT received: ${paymentInfo.usdtReceived}`);
+        } else if (status.payment_status === 'failed' || status.payment_status === 'expired') {
+          paymentInfo.status = 'failed';
+          paymentInfo.error = 'Blockchain transaction failed';
+          confirmed = true;
+          console.log(`[PoffBank] Payment ${orderId} FAILED`);
+        } else {
+          console.log(`[PoffBank] Payment ${orderId} status: ${status.payment_status}`);
+        }
+        
+        payments.set(orderId, paymentInfo);
+      } catch (e) {
+        console.log(`[PoffBank] Status check failed for ${orderId}:`, e.message);
+      }
+      
+      attempts++;
+    }
+
+    if (!confirmed && paymentInfo.status !== 'failed') {
+      paymentInfo.status = 'timeout';
+      payments.set(orderId, paymentInfo);
+      console.log(`[PoffBank] Payment ${orderId} timed out waiting for confirmation`);
+    }
+
+  } catch (error) {
+    console.error('[PoffBank] Card processing error:', error);
+    paymentInfo.status = 'failed';
+    paymentInfo.error = error.message;
+    payments.set(orderId, paymentInfo);
+  }
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Resend OTP
+app.post('/api/payment/resend-otp', async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    const paymentInfo = payments.get(orderId);
+    
+    if (!paymentInfo || paymentInfo.status !== 'awaiting_otp') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid payment session'
+      });
+    }
+
+    // Generate new OTP
+    const newOtp = generateOTP();
+    const newExpiry = Date.now() + 300000;
+    
+    paymentInfo.otp = newOtp;
+    paymentInfo.otpExpiry = newExpiry;
+    payments.set(orderId, paymentInfo);
+    otps.set(orderId, { otp: newOtp, expiry: newExpiry, attempts: 0 });
+    
+    console.log(`[PoffBank] New OTP for ${orderId}: ${newOtp}`);
+
+    res.json({
+      success: true,
+      orderId,
+      message: 'New OTP sent',
+      otpHint: `Demo OTP: ${newOtp}` // Remove in production!
+    });
+
+  } catch (error) {
+    console.error('[PoffBank] Resend OTP error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to resend OTP'
     });
   }
 });

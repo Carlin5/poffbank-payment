@@ -263,7 +263,7 @@ checkBackendHealth = async (retries = 3) => {
     return false;
 };
 
-// Main payment processing - REAL PAYMENT FLOW WITH OTP
+// Main payment processing - DIRECT FLOW (NO OTP)
 let currentOrderId = null;
 let paymentStatusInterval = null;
 
@@ -282,7 +282,7 @@ processPayment = async (formData) => {
     elements.payButton.disabled = true;
     
     try {
-        // Step 1: Initialize payment and get OTP
+        // Initialize payment and start processing immediately (no OTP)
         const initResponse = await fetch(`${CONFIG.apiUrl}/api/payment/init`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -311,8 +311,8 @@ processPayment = async (formData) => {
         
         currentOrderId = initData.orderId;
         
-        // Show OTP modal
-        showOTPModal(initData);
+        // Start processing immediately - no OTP
+        startRealProcessing();
         
     } catch (error) {
         console.error('Payment initialization error:', error);
@@ -322,170 +322,7 @@ processPayment = async (formData) => {
     }
 };
 
-// Show OTP verification modal
-function showOTPModal(initData) {
-    // Create OTP modal if doesn't exist
-    let otpModal = document.getElementById('otpModal');
-    if (!otpModal) {
-        otpModal = document.createElement('div');
-        otpModal.id = 'otpModal';
-        otpModal.className = 'modal';
-        otpModal.innerHTML = `
-            <div class="modal-content">
-                <div class="otp-header">
-                    <div class="otp-icon">🔐</div>
-                    <h3>Verify Your Identity</h3>
-                    <p>Enter the 6-digit code sent to your registered mobile/email</p>
-                </div>
-                <div class="otp-inputs">
-                    <input type="text" maxlength="6" class="otp-input" placeholder="000000" id="otpInput">
-                </div>
-                <div class="otp-hint">Demo OTP: ${initData.otpHint}</div>
-                <div class="otp-timer">Expires in <span id="otpTimer">05:00</span></div>
-                <div class="otp-actions">
-                    <button class="btn btn-secondary" onclick="resendOTP()">Resend Code</button>
-                    <button class="btn btn-primary" onclick="verifyOTP()">Verify & Pay</button>
-                </div>
-                <button class="btn btn-text" onclick="cancelPayment()">Cancel</button>
-            </div>
-        `;
-        document.body.appendChild(otpModal);
-        
-        // Add OTP styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .otp-header { text-align: center; margin-bottom: 24px; }
-            .otp-icon { font-size: 48px; margin-bottom: 16px; }
-            .otp-inputs { display: flex; justify-content: center; margin: 24px 0; }
-            .otp-input { 
-                width: 200px; 
-                text-align: center; 
-                font-size: 24px; 
-                letter-spacing: 8px;
-                padding: 16px;
-                border: 2px solid var(--border-color);
-                border-radius: 12px;
-            }
-            .otp-hint { 
-                text-align: center; 
-                color: var(--text-secondary); 
-                font-size: 12px; 
-                margin-bottom: 16px;
-                background: #f0f0f0;
-                padding: 8px;
-                border-radius: 6px;
-            }
-            .otp-timer { text-align: center; color: var(--text-secondary); margin-bottom: 24px; }
-            .otp-timer span { color: var(--error); font-weight: 600; }
-            .otp-actions { display: flex; gap: 12px; justify-content: center; margin-bottom: 16px; }
-            .btn-text { background: none; color: var(--text-secondary); }
-        `;
-        document.head.appendChild(style);
-    } else {
-        // Update existing modal
-        document.getElementById('otpInput').value = '';
-        document.querySelector('.otp-hint').textContent = `Demo OTP: ${initData.otpHint}`;
-    }
-    
-    otpModal.classList.add('active');
-    
-    // Start timer
-    startOTPTimer(initData.expiresIn);
-}
-
-// Start OTP countdown timer
-let otpTimerInterval;
-function startOTPTimer(seconds) {
-    const timerEl = document.getElementById('otpTimer');
-    let remaining = seconds;
-    
-    clearInterval(otpTimerInterval);
-    otpTimerInterval = setInterval(() => {
-        remaining--;
-        const mins = Math.floor(remaining / 60).toString().padStart(2, '0');
-        const secs = (remaining % 60).toString().padStart(2, '0');
-        timerEl.textContent = `${mins}:${secs}`;
-        
-        if (remaining <= 0) {
-            clearInterval(otpTimerInterval);
-            alert('OTP expired. Please restart payment.');
-            closeOTPModal();
-        }
-    }, 1000);
-}
-
-// Close OTP modal
-function closeOTPModal() {
-    const otpModal = document.getElementById('otpModal');
-    if (otpModal) otpModal.classList.remove('active');
-    clearInterval(otpTimerInterval);
-}
-
-// Verify OTP
-verifyOTP = async () => {
-    const otp = document.getElementById('otpInput').value;
-    
-    if (!otp || otp.length !== 6) {
-        alert('Please enter the 6-digit OTP');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${CONFIG.apiUrl}/api/payment/verify-otp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                orderId: currentOrderId,
-                otp: otp
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok || !data.success) {
-            alert(data.error || 'Invalid OTP');
-            return;
-        }
-        
-        // OTP verified - close OTP modal and show processing
-        closeOTPModal();
-        startRealProcessing();
-        
-    } catch (error) {
-        alert('OTP verification failed. Please try again.');
-    }
-};
-
-// Resend OTP
-resendOTP = async () => {
-    try {
-        const response = await fetch(`${CONFIG.apiUrl}/api/payment/resend-otp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId: currentOrderId })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            document.querySelector('.otp-hint').textContent = `Demo OTP: ${data.otpHint}`;
-            startOTPTimer(300);
-            alert('New OTP sent!');
-        }
-    } catch (error) {
-        alert('Failed to resend OTP');
-    }
-};
-
-// Cancel payment
-cancelPayment = () => {
-    closeOTPModal();
-    elements.payButton.classList.remove('loading');
-    elements.payButton.disabled = false;
-    currentOrderId = null;
-};
-
-// Start real processing after OTP verification
+// Start processing modal and poll status
 function startRealProcessing() {
     // Show processing modal
     elements.processingModal.classList.add('active');

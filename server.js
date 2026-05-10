@@ -325,9 +325,6 @@ app.get('/api/exchange-rate', async (req, res) => {
   }
 });
 
-// In-memory OTP storage (use Redis in production)
-const otps = new Map();
-
 // Validate card data
 function validateCard(cardData) {
   const { cardNumber, cardName, expiry, cvv } = cardData || {};
@@ -346,11 +343,6 @@ function validateCard(cardData) {
   }
   
   return { valid: true };
-}
-
-// Generate OTP
-function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 // Step 1: Initialize payment and validate card
@@ -378,10 +370,6 @@ app.post('/api/payment/init', async (req, res) => {
 
     // Generate PoffBank order ID
     const orderId = `POB-${Date.now()}-${uuidv4().slice(0, 8).toUpperCase()}`;
-    
-    // Generate OTP for card verification
-    const otp = generateOTP();
-    const otpExpiry = Date.now() + 300000; // 5 minutes
 
     // Store payment in PoffBank system
     const paymentInfo = {
@@ -400,11 +388,8 @@ app.post('/api/payment/init', async (req, res) => {
         expiry: cardData.expiry,
         name: cardData.cardName
       } : null,
-      status: 'awaiting_otp',
+      status: 'processing', // Go straight to processing - no OTP
       createdAt: new Date().toISOString(),
-      otp: otp,
-      otpExpiry: otpExpiry,
-      otpVerified: false,
       nowPaymentId: null,
       nowPaymentStatus: null,
       payAddress: USDT_WALLET,
@@ -413,23 +398,21 @@ app.post('/api/payment/init', async (req, res) => {
     };
 
     payments.set(orderId, paymentInfo);
-    otps.set(orderId, { otp, expiry: otpExpiry, attempts: 0 });
 
-    // Log OTP for demo (in production, send via SMS/email)
-    console.log(`[PoffBank] OTP for ${orderId}: ${otp}`);
+    // Start processing immediately (no OTP)
+    console.log(`[PoffBank] Payment ${orderId} initiated - starting processing immediately`);
+    processCardPayment(orderId);
 
     // Return PoffBank branded response
     res.json({
       success: true,
       orderId,
-      status: 'awaiting_otp',
+      status: 'processing',
       amount: amount,
       currency: 'USD',
       cardLast4: paymentInfo.cardData.last4,
       cardBrand: paymentInfo.cardData.brand,
-      message: 'Enter the 6-digit OTP sent to your registered mobile/email',
-      otpHint: `Demo OTP: ${otp}`, // Remove in production!
-      expiresIn: 300 // 5 minutes
+      message: 'Payment processing started'
     });
 
   } catch (error) {
@@ -437,79 +420,6 @@ app.post('/api/payment/init', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Payment processing unavailable. Please try again.'
-    });
-  }
-});
-
-// Step 2: Verify OTP
-app.post('/api/payment/verify-otp', async (req, res) => {
-  try {
-    const { orderId, otp } = req.body;
-    console.log('[PoffBank] OTP verification:', { orderId });
-
-    const paymentInfo = payments.get(orderId);
-    const otpData = otps.get(orderId);
-
-    if (!paymentInfo || !otpData) {
-      return res.status(404).json({
-        success: false,
-        error: 'Payment session expired or invalid'
-      });
-    }
-
-    // Check OTP expiry
-    if (Date.now() > otpData.expiry) {
-      return res.status(400).json({
-        success: false,
-        error: 'OTP expired. Please restart payment.'
-      });
-    }
-
-    // Check attempts
-    if (otpData.attempts >= 3) {
-      paymentInfo.status = 'failed';
-      payments.set(orderId, paymentInfo);
-      return res.status(400).json({
-        success: false,
-        error: 'Too many failed attempts. Payment cancelled.'
-      });
-    }
-
-    // Verify OTP
-    if (otp !== otpData.otp) {
-      otpData.attempts++;
-      otps.set(orderId, otpData);
-      return res.status(400).json({
-        success: false,
-        error: `Invalid OTP. ${3 - otpData.attempts} attempts remaining.`
-      });
-    }
-
-    // OTP verified
-    paymentInfo.otpVerified = true;
-    paymentInfo.status = 'processing';
-    paymentInfo.otpVerifiedAt = new Date().toISOString();
-    payments.set(orderId, paymentInfo);
-    otps.delete(orderId);
-
-    // Start card processing (this will actually deduct money in real implementation)
-    console.log(`[PoffBank] OTP verified for ${orderId}. Starting card processing...`);
-    
-    // Process card and create NOWPayments payment
-    processCardPayment(orderId);
-
-    res.json({
-      success: true,
-      orderId,
-      status: 'processing',
-      message: 'OTP verified. Processing card payment...'
-    });
-
-  } catch (error) {
-    console.error('[PoffBank] OTP verification error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Verification failed. Please try again.'
     });
   }
 });
@@ -718,97 +628,6 @@ async function processCardPayment(orderId) {
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
-
-// Resend OTP
-app.post('/api/payment/resend-otp', async (req, res) => {
-  try {
-    const { orderId } = req.body;
-    const paymentInfo = payments.get(orderId);
-    
-    if (!paymentInfo || paymentInfo.status !== 'awaiting_otp') {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid payment session'
-      });
-    }
-
-    // Generate new OTP
-    const newOtp = generateOTP();
-    const newExpiry = Date.now() + 300000;
-    
-    paymentInfo.otp = newOtp;
-    paymentInfo.otpExpiry = newExpiry;
-    payments.set(orderId, paymentInfo);
-    otps.set(orderId, { otp: newOtp, expiry: newExpiry, attempts: 0 });
-    
-    console.log(`[PoffBank] New OTP for ${orderId}: ${newOtp}`);
-
-    res.json({
-      success: true,
-      orderId,
-      message: 'New OTP sent',
-      otpHint: `Demo OTP: ${newOtp}` // Remove in production!
-    });
-
-  } catch (error) {
-    console.error('[PoffBank] Resend OTP error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to resend OTP'
-    });
-  }
-});
-
-// Flutterwave OTP Validation (for 3D Secure / Card OTP)
-app.post('/api/payment/validate-flutterwave', async (req, res) => {
-  try {
-    const { orderId, otp } = req.body;
-    const paymentInfo = payments.get(orderId);
-    
-    if (!paymentInfo || paymentInfo.status !== 'awaiting_flutterwave_otp') {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid payment session'
-      });
-    }
-
-    // Validate Flutterwave charge with OTP
-    const validationResult = await validateFlutterwaveCharge(paymentInfo.flwRef, otp);
-    
-    if (validationResult.status === 'success' && validationResult.data.status === 'successful') {
-      // Flutterwave payment successful
-      paymentInfo.flutterwaveTxId = validationResult.data.id;
-      paymentInfo.cardStatus = 'charged';
-      paymentInfo.status = 'card_charged';
-      paymentInfo.flutterwaveValidation = validationResult.data;
-      payments.set(orderId, paymentInfo);
-      
-      console.log(`[PoffBank] Flutterwave OTP validated for ${orderId}`);
-      
-      // Continue with NOWPayments processing
-      processCardPayment(orderId);
-      
-      res.json({
-        success: true,
-        orderId,
-        status: 'card_charged',
-        message: 'Card charged successfully. Converting to USDT...'
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        error: validationResult.message || 'OTP validation failed'
-      });
-    }
-
-  } catch (error) {
-    console.error('[PoffBank] Flutterwave validation error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'OTP validation failed'
-    });
-  }
-});
 
 // Get payment status - PoffBank branded
 app.get('/api/payment/status/:orderId', async (req, res) => {

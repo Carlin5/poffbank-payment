@@ -683,40 +683,277 @@ app.get('/api/payment/status/:orderId', async (req, res) => {
   }
 });
 
-// Complete payment (called after successful card processing)
+// Complete payment - AUTOMATIC: Card payment → NOWPayments crypto transfer
 app.post('/api/payment/complete', async (req, res) => {
   try {
-    const { orderId, transactionHash } = req.body;
-    const paymentInfo = payments.get(orderId);
-
-    if (!paymentInfo) {
-      return res.status(404).json({
+    const { orderId, amount, email, cardData } = req.body;
+    
+    // Validate required fields
+    if (!orderId || !amount) {
+      return res.status(400).json({
         success: false,
-        error: 'Payment not found'
+        error: 'Missing required fields: orderId and amount'
       });
     }
 
-    // Mark as completed
-    paymentInfo.status = 'completed';
-    paymentInfo.completedAt = new Date().toISOString();
-    paymentInfo.transactionHash = transactionHash || `0x${Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+    let paymentInfo = payments.get(orderId);
+    
+    // Create payment record if doesn't exist
+    if (!paymentInfo) {
+      paymentInfo = {
+        orderId,
+        amount: parseFloat(amount),
+        email: email || 'customer@example.com',
+        status: 'processing',
+        createdAt: new Date().toISOString(),
+        payAddress: USDT_WALLET
+      };
+      payments.set(orderId, paymentInfo);
+    }
+
+    console.log(`[PoffBank] Starting automatic payment completion for ${orderId}`);
+
+    // ============================================
+    // STEP 1: PROCESS CARD PAYMENT via STRIPE (or Flutterwave fallback)
+    // ============================================
+    paymentInfo.status = 'card_processing';
     payments.set(orderId, paymentInfo);
 
+    let cardPaymentSuccess = false;
+    let cardTxId = null;
+
+    // Try Stripe first if configured and card data provided
+    if (STRIPE_SECRET_KEY && cardData) {
+      try {
+        console.log(`[PoffBank] Processing card payment via Stripe...`);
+        
+        // Create Stripe PaymentIntent
+        const stripe = require('stripe')(STRIPE_SECRET_KEY);
+        
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: Math.round(parseFloat(amount) * 100), // Convert to cents
+          currency: 'usd',
+          payment_method_data: {
+            type: 'card',
+            card: {
+              number: cardData.cardNumber,
+              exp_month: cardData.expiry.split('/')[0],
+              exp_year: '20' + cardData.expiry.split('/')[1],
+              cvc: cardData.cvv
+            }
+          },
+          confirm: true,
+          description: `PoffBank Payment - ${orderId}`,
+          receipt_email: email || paymentInfo.email,
+          automatic_payment_methods: {
+            enabled: false
+          }
+        });
+
+        if (paymentIntent.status === 'succeeded') {
+          cardPaymentSuccess = true;
+          cardTxId = paymentIntent.id;
+          paymentInfo.cardStatus = 'charged';
+          paymentInfo.stripePaymentIntentId = paymentIntent.id;
+          console.log(`[PoffBank] Stripe payment successful: ${paymentIntent.id}`);
+        } else if (paymentIntent.status === 'requires_action' || paymentIntent.status === 'requires_confirmation') {
+          // 3D Secure or additional auth required
+          paymentInfo.stripePaymentIntentId = paymentIntent.id;
+          paymentInfo.status = 'requires_3ds';
+          paymentInfo.clientSecret = paymentIntent.client_secret;
+          payments.set(orderId, paymentInfo);
+          
+          return res.json({
+            success: true,
+            status: 'requires_3ds',
+            orderId,
+            clientSecret: paymentIntent.client_secret,
+            message: 'Additional authentication required'
+          });
+        }
+      } catch (stripeError) {
+        console.error('[PoffBank] Stripe error:', stripeError.message);
+        // Fall through to Flutterwave or simulation
+      }
+    }
+
+    // Try Flutterwave if Stripe failed/not configured and card data available
+    if (!cardPaymentSuccess && FLUTTERWAVE_SECRET_KEY && cardData) {
+      try {
+        console.log(`[PoffBank] Processing card payment via Flutterwave...`);
+        
+        const expiryParts = cardData.expiry.split('/');
+        const chargeResult = await chargeFlutterwaveCard(
+          {
+            number: cardData.cardNumber,
+            cvv: cardData.cvv,
+            expiryMonth: expiryParts[0],
+            expiryYear: '20' + expiryParts[1],
+            name: cardData.cardName
+          },
+          parseFloat(amount),
+          email || paymentInfo.email,
+          orderId
+        );
+
+        if (chargeResult.status === 'success' && chargeResult.data.status === 'successful') {
+          cardPaymentSuccess = true;
+          cardTxId = chargeResult.data.id;
+          paymentInfo.cardStatus = 'charged';
+          paymentInfo.flutterwaveTxId = chargeResult.data.id;
+          console.log(`[PoffBank] Flutterwave payment successful: ${chargeResult.data.id}`);
+        }
+      } catch (fwError) {
+        console.error('[PoffBank] Flutterwave error:', fwError.message);
+      }
+    }
+
+    // Simulation mode if no real processor available
+    if (!cardPaymentSuccess && !STRIPE_SECRET_KEY && !FLUTTERWAVE_SECRET_KEY) {
+      console.log(`[PoffBank] No payment processor configured, using simulation...`);
+      await delay(2000);
+      cardPaymentSuccess = true;
+      cardTxId = 'sim_' + uuidv4().slice(0, 12);
+      paymentInfo.cardStatus = 'charged';
+      paymentInfo.simulationMode = true;
+    }
+
+    if (!cardPaymentSuccess) {
+      paymentInfo.status = 'failed';
+      paymentInfo.error = 'Card payment failed';
+      payments.set(orderId, paymentInfo);
+      
+      return res.status(400).json({
+        success: false,
+        error: 'Card payment could not be processed'
+      });
+    }
+
+    paymentInfo.cardTxId = cardTxId;
+    paymentInfo.status = 'card_charged';
+    payments.set(orderId, paymentInfo);
+    console.log(`[PoffBank] Card payment complete: $${amount} USD`);
+
+    // ============================================
+    // STEP 2: TRIGGER NOWPAYMENTS CRYPTO TRANSFER
+    // Automatically triggered after successful card payment
+    // ============================================
+    paymentInfo.status = 'creating_crypto_payment';
+    payments.set(orderId, paymentInfo);
+
+    let nowPayment = null;
+    try {
+      // Call NOWPayments to create crypto payment
+      nowPayment = await createNowPayment(
+        paymentInfo.amount,
+        orderId,
+        paymentInfo.email,
+        `PoffBank Payment - ${orderId}`
+      );
+
+      paymentInfo.nowPaymentId = nowPayment.payment_id;
+      paymentInfo.nowPaymentStatus = nowPayment.payment_status;
+      paymentInfo.payAddress = nowPayment.pay_address || USDT_WALLET;
+      paymentInfo.usdtAmount = nowPayment.pay_amount;
+      paymentInfo.status = 'crypto_payment_created';
+      payments.set(orderId, paymentInfo);
+
+      console.log(`[PoffBank] NOWPayments created: ${nowPayment.payment_id}`);
+      console.log(`[PoffBank] USDT will be sent to wallet: ${USDT_WALLET}`);
+
+    } catch (nowError) {
+      console.error('[PoffBank] NOWPayments creation failed:', nowError.message);
+      paymentInfo.status = 'failed';
+      paymentInfo.error = 'Crypto payment creation failed: ' + nowError.message;
+      payments.set(orderId, paymentInfo);
+      
+      return res.status(500).json({
+        success: false,
+        error: 'Card payment successful but crypto transfer setup failed'
+      });
+    }
+
+    // ============================================
+    // STEP 3: POLL FOR CRYPTO PAYMENT COMPLETION
+    // ============================================
+    paymentInfo.status = 'awaiting_blockchain';
+    payments.set(orderId, paymentInfo);
+
+    // Start async polling (don't block the response)
+    pollAndCompletePayment(orderId, paymentInfo.nowPaymentId);
+
+    // Return immediate success - crypto processing continues in background
     res.json({
       success: true,
+      status: 'processing',
       orderId,
-      transactionHash: paymentInfo.transactionHash,
-      status: 'completed'
+      cardTxId,
+      nowPaymentId: nowPayment.payment_id,
+      usdtAmount: nowPayment.pay_amount,
+      walletAddress: USDT_WALLET,
+      message: 'Card payment successful. Crypto transfer initiated and processing.'
     });
 
   } catch (error) {
-    console.error('Complete payment error:', error);
+    console.error('[PoffBank] Complete payment error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to complete payment'
+      error: 'Payment processing failed: ' + error.message
     });
   }
 });
+
+// Async function to poll NOWPayments status and complete payment
+async function pollAndCompletePayment(orderId, nowPaymentId) {
+  const paymentInfo = payments.get(orderId);
+  if (!paymentInfo) return;
+
+  let confirmed = false;
+  let attempts = 0;
+  const maxAttempts = 60; // 5 minutes
+
+  while (!confirmed && attempts < maxAttempts) {
+    await delay(5000);
+
+    try {
+      const status = await getNowPaymentStatus(nowPaymentId);
+      paymentInfo.nowPaymentStatus = status.payment_status;
+
+      if (status.payment_status === 'finished' || status.payment_status === 'confirmed') {
+        confirmed = true;
+        paymentInfo.status = 'completed';
+        paymentInfo.completedAt = new Date().toISOString();
+        paymentInfo.usdtReceived = status.outcome_amount || status.pay_amount;
+        paymentInfo.txHash = status.payin_hash || status.payment_hash || status.hash;
+        
+        console.log(`[PoffBank] ✓ PAYMENT FULLY COMPLETED!`);
+        console.log(`[PoffBank] Order: ${orderId}`);
+        console.log(`[PoffBank] USD Charged: $${paymentInfo.amount}`);
+        console.log(`[PoffBank] USDT Received: ${paymentInfo.usdtReceived} USDT`);
+        console.log(`[PoffBank] Wallet: ${USDT_WALLET}`);
+        console.log(`[PoffBank] TX Hash: ${paymentInfo.txHash}`);
+        
+      } else if (status.payment_status === 'failed' || status.payment_status === 'expired') {
+        paymentInfo.status = 'failed';
+        paymentInfo.error = 'Blockchain transaction failed';
+        confirmed = true;
+        console.log(`[PoffBank] Payment ${orderId} FAILED on blockchain`);
+      }
+
+      payments.set(orderId, paymentInfo);
+    } catch (e) {
+      console.log(`[PoffBank] Status check failed for ${orderId}:`, e.message);
+    }
+
+    attempts++;
+  }
+
+  if (!confirmed && paymentInfo.status !== 'failed') {
+    paymentInfo.status = 'timeout';
+    payments.set(orderId, paymentInfo);
+    console.log(`[PoffBank] Payment ${orderId} timed out waiting for confirmation`);
+  }
+}
 
 // ============================================
 // Frontend Routes

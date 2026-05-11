@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Cancelled - PoffBank</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a25;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --error: #ef4444;
+            --border: #2a2a3a;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .cancel-container {
+            width: 100%;
+            max-width: 480px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        .cancel-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2.5rem;
+            color: var(--error);
+        }
+
+        .cancel-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .cancel-message {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .reason-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+
+        .reason-title {
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .reason-list {
+            list-style: none;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .reason-list li {
+            margin-bottom: 0.5rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .reason-list li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: var(--error);
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--error);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-primary);
+        }
+
+        .support-info {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .support-info p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .support-email {
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .support-email:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="cancel-container">
+        <div class="cancel-icon">✕</div>
+        <h1 class="cancel-title">Payment Cancelled</h1>
+        <p class="cancel-message">
+            Your payment was not completed. No charges have been made to your account.
+        </p>
+        
+        <div class="reason-box">
+            <h3 class="reason-title">Common Reasons</h3>
+            <ul class="reason-list">
+                <li>Payment was cancelled by user</li>
+                <li>Transaction timed out</li>
+                <li>Insufficient funds</li>
+                <li>Payment method declined</li>
+                <li>Network connection issue</li>
+            </ul>
+        </div>
+        
+        <div class="action-buttons">
+            <button class="btn btn-primary" onclick="retryPayment()">
+                <span>↻</span>
+                <span>Try Again</span>
+            </button>
+            <a href="https://carlin5.netlify.app" class="btn btn-secondary">
+                <span>←</span>
+                <span>Return to Merchant</span>
+            </a>
+        </div>
+        
+        <div class="support-info">
+            <p>Need help with your payment?</p>
+            <a href="mailto:support@poffbank.com" class="support-email">support@poffbank.com</a>
+        </div>
+    </div>
+
+    <script>
+        // Get invoice ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const invoiceId = urlParams.get('invoice_id') || urlParams.get('order_id');
+        
+        function retryPayment() {
+            if (invoiceId) {
+                // Redirect back to checkout
+                window.location.href = `https://carlin5.netlify.app/checkout/${invoiceId}`;
+            } else {
+                // Go back to merchant
+                window.location.href = 'https://carlin5.netlify.app';
+            }
+        }
+    </script>
+</body>
+</html>

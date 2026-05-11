@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PoffBank - Merchant Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a25;
+            --bg-hover: #252535;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --accent: #dc2626;
+            --accent-light: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --border: #2a2a3a;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+        }
+
+        .logo-text {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .logo-text span {
+            color: var(--accent);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--text-primary);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .wallet-badge {
+            background: var(--bg-card);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .wallet-badge strong {
+            color: var(--text-primary);
+        }
+
+        /* Main Layout */
+        .main {
+            display: flex;
+            min-height: calc(100vh - 73px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 1.5rem 0;
+        }
+
+        .nav-section {
+            padding: 0 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .nav-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            margin: 0.25rem 0;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            border-left: 3px solid var(--accent);
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            opacity: 0.7;
+        }
+
+        /* Content */
+        .content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .stat-icon.green {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .stat-icon.blue {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        .stat-icon.orange {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .stat-icon.red {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-change {
+            font-size: 0.875rem;
+            color: var(--success);
+        }
+
+        /* Card */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .action-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: left;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .action-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent);
+        }
+
+        .action-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .action-text h4 {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .action-text p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:hover {
+            background: var(--bg-hover);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-badge.completed {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .status-badge.pending {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .status-badge.failed {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Button */
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-size: 0.875rem;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-light);
+        }
+
+        .btn-secondary {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        /* Copy Link Section */
+        .link-generator {
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.1), rgba(220, 38, 38, 0.05));
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .link-display {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .link-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-family: monospace;
+        }
+
+        .copy-btn {
+            padding: 0.75rem 1.25rem;
+            background: var(--accent);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent-light);
+        }
+
+        .copy-btn.copied {
+            background: var(--success);
+        }
+
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transform: translateX(400px);
+            transition: transform 0.3s;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast-icon {
+            font-size: 1.25rem;
+        }
+
+        .toast.success .toast-icon {
+            color: var(--success);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .quick-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <a href="#" class="logo">
+            <div class="logo-icon">PB</div>
+            <div class="logo-text">Poff<span>Bank</span></div>
+        </a>
+        <nav class="nav-links">
+            <a href="#" class="nav-link active">Dashboard</a>
+            <a href="#" class="nav-link">Payments</a>
+            <a href="#" class="nav-link">Settings</a>
+        </nav>
+        <div class="user-menu">
+            <div class="wallet-badge">
+                Wallet: <strong>USDT TRC20</strong>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <div class="main">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="nav-section">
+                <div class="nav-label">Main</div>
+                <a href="#" class="nav-item active">
+                    <span class="nav-icon">📊</span>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">💳</span>
+                    Payments
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">📄</span>
+                    Invoices
+                </a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-label">Tools</div>
+                <a href="#" class="nav-item" onclick="openCreateModal()">
+                    <span class="nav-icon">🔗</span>
+                    Create Link
+                </a>
+                <a href="#" class="nav-item" onclick="showWalletInfo()">
+                    <span class="nav-icon">👛</span>
+                    Wallet
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">📈</span>
+                    Analytics
+                </a>
+            </div>
+        </aside>
+
+        <!-- Content -->
+        <main class="content">
+            <div class="page-header">
+                <h1 class="page-title">Dashboard</h1>
+                <p class="page-subtitle">Welcome back! Here's what's happening with your payments.</p>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <button class="action-btn" onclick="openCreateModal()">
+                    <div class="action-icon">+</div>
+                    <div class="action-text">
+                        <h4>Create Payment Link</h4>
+                        <p>Generate a new payment URL</p>
+                    </div>
+                </button>
+                <button class="action-btn" onclick="copyPaymentLink()">
+                    <div class="action-icon">📋</div>
+                    <div class="action-text">
+                        <h4>Copy Link</h4>
+                        <p>Share your payment URL</p>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-label">Total Revenue</div>
+                            <div class="stat-value" id="totalRevenue">$0.00</div>
+                            <div class="stat-change">+0% this month</div>
+                        </div>
+                        <div class="stat-icon green">💰</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-label">Total Payments</div>
+                            <div class="stat-value" id="totalPayments">0</div>
+                            <div class="stat-change">Completed</div>
+                        </div>
+                        <div class="stat-icon blue">✓</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-label">Pending</div>
+                            <div class="stat-value" id="pendingPayments">0</div>
+                            <div class="stat-change">Awaiting payment</div>
+                        </div>
+                        <div class="stat-icon orange">⏳</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-label">Failed</div>
+                            <div class="stat-value" id="failedPayments">0</div>
+                            <div class="stat-change">Requires attention</div>
+                        </div>
+                        <div class="stat-icon red">✕</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Transactions -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Recent Payments</h3>
+                    <button class="btn btn-secondary" onclick="refreshData()">
+                        🔄 Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Invoice ID</th>
+                                    <th>Amount</th>
+                                    <th>Customer</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionsTable">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: var(--text-secondary);">
+                                        Loading...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wallet Info -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Payout Wallet</h3>
+                    <span class="status-badge completed">
+                        <span class="status-dot"></span>
+                        Active
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="link-generator">
+                        <h4 style="margin-bottom: 0.5rem;">USDT TRC20 Wallet Address</h4>
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
+                            All payments are automatically converted to USDT and sent to this wallet.
+                        </p>
+                        <div class="link-display">
+                            <input type="text" class="link-input" id="walletAddress" readonly>
+                            <button class="copy-btn" onclick="copyWalletAddress()">Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create Payment Modal -->
+    <div class="modal" id="createModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Create Payment Link</h3>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Amount (USD)</label>
+                    <input type="number" class="form-input" id="paymentAmount" placeholder="0.00" step="0.01" min="1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-input" id="paymentDescription" placeholder="Payment for...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Customer Email (optional)</label>
+                    <input type="email" class="form-input" id="customerEmail" placeholder="customer@example.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Customer Name (optional)</label>
+                    <input type="text" class="form-input" id="customerName" placeholder="John Doe">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="createPayment()" id="createBtn">Create Payment</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <span class="toast-icon">✓</span>
+        <span id="toastMessage">Success!</span>
+    </div>
+
+    <script>
+        const API_URL = 'https://poffbank-api.onrender.com';
+        const FRONTEND_URL = 'https://carlin5.netlify.app';
+        
+        let paymentLink = '';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboardData();
+            loadWalletInfo();
+        });
+
+        // Load Dashboard Stats
+        async function loadDashboardData() {
+            try {
+                const response = await fetch(`${API_URL}/api/dashboard/stats`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('totalRevenue').textContent = 
+                        '$' + data.data.totalAmount.toFixed(2);
+                    document.getElementById('totalPayments').textContent = 
+                        data.data.completedPayments;
+                    document.getElementById('pendingPayments').textContent = 
+                        data.data.pendingPayments;
+                    document.getElementById('failedPayments').textContent = 
+                        data.data.failedPayments;
+                    
+                    renderTransactions(data.data.recentTransactions);
+                }
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+
+        // Load Wallet Info
+        async function loadWalletInfo() {
+            try {
+                const response = await fetch(`${API_URL}/api/wallet`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('walletAddress').value = data.data.address;
+                }
+            } catch (error) {
+                console.error('Failed to load wallet:', error);
+            }
+        }
+
+        // Render Transactions
+        function renderTransactions(transactions) {
+            const tbody = document.getElementById('transactionsTable');
+            
+            if (transactions.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                            No payments yet. Create your first payment link!
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = transactions.map(tx => `
+                <tr>
+                    <td>
+                        <strong>${tx.orderId || tx.id.substring(0, 8)}</strong>
+                    </td>
+                    <td>$${tx.amount?.toFixed(2) || '0.00'}</td>
+                    <td>${tx.customerEmail || 'Anonymous'}</td>
+                    <td>
+                        <span class="status-badge ${tx.status}">
+                            <span class="status-dot"></span>
+                            ${tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
+                        </span>
+                    </td>
+                    <td>${new Date(tx.createdAt).toLocaleDateString()}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Create Payment
+        async function createPayment() {
+            const amount = document.getElementById('paymentAmount').value;
+            const description = document.getElementById('paymentDescription').value;
+            const email = document.getElementById('customerEmail').value;
+            const name = document.getElementById('customerName').value;
+            
+            if (!amount || amount < 1) {
+                showToast('Please enter a valid amount (minimum $1)', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('createBtn');
+            btn.innerHTML = '<span class="loading"></span> Creating...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(`${API_URL}/api/create-payment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount: parseFloat(amount),
+                        description: description || 'Payment via PoffBank',
+                        customerEmail: email,
+                        customerName: name
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    paymentLink = data.data.checkoutUrl;
+                    showToast('Payment created successfully!');
+                    closeCreateModal();
+                    loadDashboardData();
+                    
+                    // Show the link
+                    setTimeout(() => {
+                        if (confirm('Payment link created! Open checkout page?')) {
+                            window.open(paymentLink, '_blank');
+                        }
+                    }, 500);
+                } else {
+                    showToast(data.error || 'Failed to create payment', 'error');
+                }
+            } catch (error) {
+                console.error('Create payment error:', error);
+                showToast('Failed to create payment', 'error');
+            } finally {
+                btn.innerHTML = 'Create Payment';
+                btn.disabled = false;
+            }
+        }
+
+        // Copy Functions
+        function copyWalletAddress() {
+            const address = document.getElementById('walletAddress').value;
+            navigator.clipboard.writeText(address);
+            showToast('Wallet address copied!');
+        }
+
+        function copyPaymentLink() {
+            if (!paymentLink) {
+                showToast('Create a payment first!', 'error');
+                return;
+            }
+            navigator.clipboard.writeText(paymentLink);
+            showToast('Payment link copied!');
+        }
+
+        // Modal Functions
+        function openCreateModal() {
+            document.getElementById('createModal').classList.add('active');
+        }
+
+        function closeCreateModal() {
+            document.getElementById('createModal').classList.remove('active');
+            // Reset form
+            document.getElementById('paymentAmount').value = '';
+            document.getElementById('paymentDescription').value = '';
+            document.getElementById('customerEmail').value = '';
+            document.getElementById('customerName').value = '';
+        }
+
+        function showWalletInfo() {
+            document.querySelector('.card:last-child').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Toast
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.className = 'toast ' + type + ' show';
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Refresh
+        function refreshData() {
+            loadDashboardData();
+            showToast('Dashboard refreshed!');
+        }
+
+        // Close modal on outside click
+        document.getElementById('createModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                closeCreateModal();
+            }
+        });
+    </script>
+</body>
+</html>

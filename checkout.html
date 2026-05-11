@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PoffBank Checkout</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a25;
+            --bg-hover: #252535;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --accent: #dc2626;
+            --accent-light: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --border: #2a2a3a;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .checkout-container {
+            width: 100%;
+            max-width: 480px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .checkout-header {
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .merchant-logo {
+            width: 64px;
+            height: 64px;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--accent);
+        }
+
+        .merchant-name {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .secure-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.375rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+        }
+
+        .checkout-body {
+            padding: 1.5rem;
+        }
+
+        .payment-details {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .detail-row:last-child {
+            margin-bottom: 0;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .detail-label {
+            color: var(--text-secondary);
+        }
+
+        .detail-value {
+            font-weight: 500;
+        }
+
+        .amount-large {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        /* Payment Method Selection */
+        .payment-methods {
+            margin-bottom: 1.5rem;
+        }
+
+        .method-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .method-options {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .method-option {
+            flex: 1;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .method-option:hover {
+            border-color: var(--accent);
+        }
+
+        .method-option.active {
+            border-color: var(--accent);
+            background: rgba(220, 38, 38, 0.1);
+        }
+
+        .method-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .method-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        /* Pay Button */
+        .pay-button {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .pay-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(220, 38, 38, 0.3);
+        }
+
+        .pay-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading State */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Status Display */
+        .status-display {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .status-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin: 0 auto 1.5rem;
+        }
+
+        .status-icon.success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .status-icon.pending {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .status-icon.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+        }
+
+        .status-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-message {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .transaction-hash {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            word-break: break-all;
+            margin-bottom: 1.5rem;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .back-button:hover {
+            background: var(--bg-hover);
+        }
+
+        /* QR Code Section */
+        .qr-section {
+            text-align: center;
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+        }
+
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            background: white;
+            border-radius: 12px;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .qr-placeholder {
+            color: #666;
+            font-size: 0.875rem;
+        }
+
+        .wallet-address {
+            background: var(--bg-primary);
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            word-break: break-all;
+            margin-top: 0.75rem;
+        }
+
+        .copy-btn {
+            margin-top: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: var(--accent);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent-light);
+        }
+
+        /* Footer */
+        .checkout-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .security-badges {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .security-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .footer-text {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Error State */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            color: var(--error);
+            font-size: 0.875rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .checkout-header {
+                padding: 1.5rem;
+            }
+            
+            .method-options {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="checkout-container" id="checkoutContainer">
+        <!-- Loading State -->
+        <div style="text-align: center; padding: 3rem;">
+            <div class="loading" style="width: 40px; height: 40px; margin: 0 auto 1rem;"></div>
+            <p style="color: var(--text-secondary);">Loading payment details...</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://poffbank-api.onrender.com';
+        const FRONTEND_URL = 'https://carlin5.netlify.app';
+        
+        let invoiceData = null;
+        let currentStatus = 'pending';
+        let statusInterval = null;
+
+        // Get invoice ID from URL
+        function getInvoiceId() {
+            const path = window.location.pathname;
+            const match = path.match(/\/checkout\/([^\/]+)/);
+            return match ? match[1] : null;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            const invoiceId = getInvoiceId();
+            
+            if (!invoiceId) {
+                showError('Invalid checkout link');
+                return;
+            }
+            
+            loadInvoice(invoiceId);
+        });
+
+        // Load Invoice
+        async function loadInvoice(invoiceId) {
+            try {
+                const response = await fetch(`${API_URL}/api/invoice/${invoiceId}`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    showError(data.error || 'Payment not found');
+                    return;
+                }
+                
+                invoiceData = data.invoice;
+                renderCheckout();
+                
+                // Start status polling if pending
+                if (invoiceData.status === 'pending' || invoiceData.status === 'processing') {
+                    startStatusPolling(invoiceId);
+                }
+                
+            } catch (error) {
+                console.error('Load invoice error:', error);
+                showError('Failed to load payment details');
+            }
+        }
+
+        // Render Checkout
+        function renderCheckout() {
+            const container = document.getElementById('checkoutContainer');
+            
+            // Determine which view to show based on status
+            if (invoiceData.status === 'completed') {
+                renderSuccess(container);
+            } else if (invoiceData.status === 'failed' || invoiceData.status === 'expired') {
+                renderError(container);
+            } else {
+                renderPaymentForm(container);
+            }
+        }
+
+        // Render Payment Form
+        function renderPaymentForm(container) {
+            container.innerHTML = `
+                <div class="checkout-header">
+                    <div class="merchant-logo">PB</div>
+                    <div class="merchant-name">${invoiceData.merchant?.name || 'PoffBank'}</div>
+                    <div class="secure-badge">
+                        <span>🔒</span>
+                        <span>Secure Checkout</span>
+                    </div>
+                </div>
+                
+                <div class="checkout-body">
+                    <div class="payment-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Description</span>
+                            <span class="detail-value">${invoiceData.description || 'Payment'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Invoice ID</span>
+                            <span class="detail-value">${invoiceData.orderId}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Total Amount</span>
+                            <span class="detail-value amount-large">$${invoiceData.amount.toFixed(2)} ${invoiceData.currency}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="payment-methods">
+                        <div class="method-title">Select Payment Method</div>
+                        <div class="method-options">
+                            <div class="method-option active" onclick="selectMethod('card')">
+                                <div class="method-icon">💳</div>
+                                <div class="method-name">Card</div>
+                            </div>
+                            <div class="method-option" onclick="selectMethod('crypto')">
+                                <div class="method-icon">₿</div>
+                                <div class="method-name">Crypto</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="pay-button" onclick="processPayment()" id="payBtn">
+                        <span>Pay</span>
+                        <span>$${invoiceData.amount.toFixed(2)}</span>
+                    </button>
+                </div>
+                
+                <div class="checkout-footer">
+                    <div class="security-badges">
+                        <div class="security-badge">
+                            <span>🔒</span>
+                            <span>SSL Secure</span>
+                        </div>
+                        <div class="security-badge">
+                            <span>🛡️</span>
+                            <span>Protected</span>
+                        </div>
+                    </div>
+                    <p class="footer-text">
+                        Powered by PoffBank • All payments convert to USDT
+                    </p>
+                </div>
+            `;
+        }
+
+        // Render Success
+        function renderSuccess(container) {
+            container.innerHTML = `
+                <div class="status-display">
+                    <div class="status-icon success">✓</div>
+                    <h2 class="status-title">Payment Successful!</h2>
+                    <p class="status-message">
+                        Your payment of $${invoiceData.amount.toFixed(2)} has been confirmed.
+                    </p>
+                    ${invoiceData.transactionHash ? `
+                        <div style="margin-bottom: 1.5rem;">
+                            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Transaction Hash</p>
+                            <div class="transaction-hash">${invoiceData.transactionHash}</div>
+                        </div>
+                    ` : ''}
+                    <a href="${FRONTEND_URL}" class="back-button">
+                        <span>←</span>
+                        <span>Return to Merchant</span>
+                    </a>
+                </div>
+            `;
+        }
+
+        // Render Error
+        function renderError(container) {
+            container.innerHTML = `
+                <div class="status-display">
+                    <div class="status-icon error">✕</div>
+                    <h2 class="status-title">Payment ${invoiceData.status === 'expired' ? 'Expired' : 'Failed'}</h2>
+                    <p class="status-message">
+                        ${invoiceData.status === 'expired' 
+                            ? 'This payment link has expired. Please request a new one.' 
+                            : 'There was an issue processing your payment. Please try again.'}
+                    </p>
+                    <a href="${FRONTEND_URL}" class="back-button">
+                        <span>←</span>
+                        <span>Return to Merchant</span>
+                    </a>
+                </div>
+            `;
+        }
+
+        // Show Error
+        function showError(message) {
+            const container = document.getElementById('checkoutContainer');
+            container.innerHTML = `
+                <div class="checkout-header">
+                    <div class="merchant-logo">!</div>
+                    <div class="merchant-name">Error</div>
+                </div>
+                <div class="checkout-body">
+                    <div class="error-message">${message}</div>
+                    <a href="${FRONTEND_URL}" class="back-button" style="width: 100%; justify-content: center;">
+                        <span>←</span>
+                        <span>Go Back</span>
+                    </a>
+                </div>
+            `;
+        }
+
+        // Select Payment Method
+        function selectMethod(method) {
+            document.querySelectorAll('.method-option').forEach(opt => {
+                opt.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+        }
+
+        // Process Payment
+        async function processPayment() {
+            const btn = document.getElementById('payBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span><span>Processing...</span>';
+            
+            // Open NOWPayments invoice URL
+            if (invoiceData.nowpaymentsInvoiceUrl) {
+                window.location.href = invoiceData.nowpaymentsInvoiceUrl;
+            } else {
+                // Fallback: redirect to payment URL
+                window.location.href = invoiceData.paymentUrl || 
+                    `${FRONTEND_URL}/pay/${invoiceData.id}`;
+            }
+        }
+
+        // Start Status Polling
+        function startStatusPolling(invoiceId) {
+            statusInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_URL}/api/payment-status/${invoiceId}`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.data.status !== currentStatus) {
+                        currentStatus = data.data.status;
+                        invoiceData = { ...invoiceData, ...data.data };
+                        renderCheckout();
+                        
+                        if (currentStatus === 'completed' || currentStatus === 'failed') {
+                            clearInterval(statusInterval);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Status poll error:', error);
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

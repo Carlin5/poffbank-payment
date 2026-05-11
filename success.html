@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful - PoffBank</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a25;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --success: #10b981;
+            --border: #2a2a3a;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .success-container {
+            width: 100%;
+            max-width: 480px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2.5rem;
+            color: var(--success);
+        }
+
+        .success-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .success-message {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .receipt-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+
+        .receipt-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .receipt-row:last-child {
+            margin-bottom: 0;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .receipt-label {
+            color: var(--text-secondary);
+        }
+
+        .receipt-value {
+            font-weight: 500;
+        }
+
+        .receipt-value.total {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .transaction-hash {
+            background: var(--bg-primary);
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            word-break: break-all;
+            margin-top: 0.75rem;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: var(--success);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+        }
+
+        .merchant-info {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .merchant-name {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="success-icon">✓</div>
+        <h1 class="success-title">Payment Successful!</h1>
+        <p class="success-message">
+            Thank you for your payment. Your transaction has been confirmed and the merchant has been notified.
+        </p>
+        
+        <div class="receipt-box">
+            <div class="receipt-row">
+                <span class="receipt-label">Amount Paid</span>
+                <span class="receipt-value total" id="amount">$0.00</span>
+            </div>
+            <div class="receipt-row">
+                <span class="receipt-label">Currency</span>
+                <span class="receipt-value">USDT (TRC20)</span>
+            </div>
+            <div class="receipt-row">
+                <span class="receipt-label">Status</span>
+                <span class="receipt-value" style="color: var(--success);">Confirmed</span>
+            </div>
+            <div class="receipt-row">
+                <span class="receipt-label">Transaction Hash</span>
+            </div>
+            <div class="transaction-hash" id="txHash">
+                Loading...
+            </div>
+        </div>
+        
+        <a href="https://carlin5.netlify.app" class="back-button">
+            <span>←</span>
+            <span>Return to Merchant</span>
+        </a>
+        
+        <div class="merchant-info">
+            <p class="merchant-name">Powered by PoffBank</p>
+        </div>
+    </div>
+
+    <script>
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const invoiceId = urlParams.get('invoice_id') || urlParams.get('order_id');
+        
+        if (invoiceId) {
+            loadTransactionDetails(invoiceId);
+        }
+
+        async function loadTransactionDetails(invoiceId) {
+            try {
+                const response = await fetch(`https://poffbank-api.onrender.com/api/payment-status/${invoiceId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('amount').textContent = 
+                        '$' + (data.data.amount || 0).toFixed(2);
+                    
+                    if (data.data.transactionHash) {
+                        document.getElementById('txHash').textContent = data.data.transactionHash;
+                    } else {
+                        document.getElementById('txHash').textContent = 
+                            'Transaction processing on blockchain...';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load transaction details:', error);
+            }
+        }
+    </script>
+</body>
+</html>

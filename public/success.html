@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Successful - PoffBank</title>
+    <title>Payment Successful — PoffBank Secure Payments</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -151,13 +151,17 @@
     <div class="success-container">
         <div class="success-icon">✓</div>
         <h1 class="success-title">Payment Successful!</h1>
-        <p class="success-message">
-            Thank you for your payment. Your transaction has been confirmed and the merchant has been notified.
+        <p class="success-message" id="message">
+            Your payment is being confirmed on-chain. This page will update automatically.
         </p>
         
         <div class="receipt-box">
             <div class="receipt-row">
-                <span class="receipt-label">Amount Paid</span>
+                <span class="receipt-label">Order ID</span>
+                <span class="receipt-value" id="orderId">—</span>
+            </div>
+            <div class="receipt-row">
+                <span class="receipt-label">Amount</span>
                 <span class="receipt-value total" id="amount">$0.00</span>
             </div>
             <div class="receipt-row">
@@ -166,54 +170,75 @@
             </div>
             <div class="receipt-row">
                 <span class="receipt-label">Status</span>
-                <span class="receipt-value" style="color: var(--success);">Confirmed</span>
+                <span class="receipt-value" id="status" style="color: var(--success);">Confirming…</span>
             </div>
             <div class="receipt-row">
                 <span class="receipt-label">Transaction Hash</span>
             </div>
             <div class="transaction-hash" id="txHash">
-                Loading...
+                Pending…
             </div>
         </div>
         
-        <a href="https://carlin5.netlify.app" class="back-button">
+        <a href="/pay.html" class="back-button">
             <span>←</span>
-            <span>Return to Merchant</span>
+            <span>New Payment</span>
         </a>
         
         <div class="merchant-info">
-            <p class="merchant-name">Powered by PoffBank</p>
+            <p class="merchant-name">PoffBank Secure Payments</p>
         </div>
     </div>
 
     <script>
-        // Parse URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const invoiceId = urlParams.get('invoice_id') || urlParams.get('order_id');
-        
-        if (invoiceId) {
-            loadTransactionDetails(invoiceId);
+        const orderId = urlParams.get('order_id')
+            || urlParams.get('orderId')
+            || urlParams.get('invoice_id')
+            || (function () { try { return localStorage.getItem('poffbank.lastOrderId'); } catch (e) { return null; } })();
+
+        const STATUS_LABELS = {
+            waiting: { text: 'Awaiting payment', color: '#f59e0b' },
+            confirming: { text: 'Confirming on-chain', color: '#f59e0b' },
+            partially_paid: { text: 'Partially paid', color: '#f59e0b' },
+            completed: { text: 'Confirmed', color: 'var(--success)' },
+            failed: { text: 'Failed', color: '#ef4444' },
+        };
+
+        if (orderId) {
+            document.getElementById('orderId').textContent = orderId;
+            poll();
+        } else {
+            document.getElementById('message').textContent = 'No order reference found.';
         }
 
-        async function loadTransactionDetails(invoiceId) {
+        async function poll() {
             try {
-                const response = await fetch(`https://poffbank-api.onrender.com/api/payment-status/${invoiceId}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    document.getElementById('amount').textContent = 
-                        '$' + (data.data.amount || 0).toFixed(2);
-                    
-                    if (data.data.transactionHash) {
-                        document.getElementById('txHash').textContent = data.data.transactionHash;
-                    } else {
-                        document.getElementById('txHash').textContent = 
-                            'Transaction processing on blockchain...';
+                const res = await fetch(`/api/payment/status/${encodeURIComponent(orderId)}`);
+                const data = await res.json();
+                if (data && data.success) {
+                    const amt = Number(data.amount || 0).toFixed(2);
+                    document.getElementById('amount').textContent = '$' + amt;
+                    const lbl = STATUS_LABELS[data.status] || { text: data.status || '—', color: 'var(--text-secondary)' };
+                    const statusEl = document.getElementById('status');
+                    statusEl.textContent = lbl.text;
+                    statusEl.style.color = lbl.color;
+                    document.getElementById('txHash').textContent = data.txHash || 'Pending…';
+                    if (data.status === 'completed') {
+                        document.getElementById('message').textContent =
+                            'Thank you. Your payment has been confirmed on-chain.';
+                        return; // stop polling
+                    }
+                    if (data.status === 'failed') {
+                        document.getElementById('message').textContent =
+                            'This payment did not complete. Please start a new payment.';
+                        return;
                     }
                 }
-            } catch (error) {
-                console.error('Failed to load transaction details:', error);
+            } catch (err) {
+                console.warn('status poll failed', err);
             }
+            setTimeout(poll, 5000);
         }
     </script>
 </body>

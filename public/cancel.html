@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Cancelled - PoffBank</title>
+    <title>Payment Cancelled — PoffBank Secure Payments</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -185,35 +185,32 @@
         </div>
         
         <div class="action-buttons">
-            <button class="btn btn-primary" onclick="retryPayment()">
+            <a href="/pay.html" class="btn btn-primary">
                 <span>↻</span>
                 <span>Try Again</span>
-            </button>
-            <a href="https://carlin5.netlify.app" class="btn btn-secondary">
+            </a>
+            <a href="/pay.html" class="btn btn-secondary">
                 <span>←</span>
-                <span>Return to Merchant</span>
+                <span>Back to Checkout</span>
             </a>
         </div>
         
         <div class="support-info">
             <p>Need help with your payment?</p>
             <a href="mailto:support@poffbank.com" class="support-email">support@poffbank.com</a>
+            <p style="margin-top:1rem;font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;">PoffBank Secure Payments</p>
         </div>
     </div>
 
     <script>
-        // Get invoice ID from URL
+        // Surface the order id if available for support reference.
         const urlParams = new URLSearchParams(window.location.search);
-        const invoiceId = urlParams.get('invoice_id') || urlParams.get('order_id');
-        
-        function retryPayment() {
-            if (invoiceId) {
-                // Redirect back to checkout
-                window.location.href = `https://carlin5.netlify.app/checkout/${invoiceId}`;
-            } else {
-                // Go back to merchant
-                window.location.href = 'https://carlin5.netlify.app';
-            }
+        const orderId = urlParams.get('order_id') || urlParams.get('invoice_id');
+        if (orderId) {
+            const ref = document.createElement('p');
+            ref.style.cssText = 'color:var(--text-secondary);font-size:.8rem;margin-top:1rem;';
+            ref.innerHTML = 'Reference: <code style="color:var(--text-primary);">' + orderId + '</code>';
+            document.querySelector('.support-info').appendChild(ref);
         }
     </script>
 </body>

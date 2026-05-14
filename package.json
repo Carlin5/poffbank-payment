@@ -2,10 +2,10 @@
   "name": "poffbank-payment-gateway",
   "version": "1.0.0",
   "description": "PoffBank Payment Gateway with NOWPayments backend integration",
-  "main": "server.js",
+  "main": "server-clean.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node server-clean.js",
+    "dev": "nodemon server-clean.js"
   },
   "dependencies": {
     "express": "^4.18.2",

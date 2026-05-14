@@ -1,16 +1,39 @@
 services:
   - type: web
-    name: poffbank-api
+    name: poffbank-secure-payments
     runtime: node
-    plan: free
-    buildCommand: npm install
-    startCommand: npm start
+    plan: free            # upgrade to 'starter' ($7/mo) to disable cold-start sleep
+    region: oregon        # change if you prefer another region
+    healthCheckPath: /api/health
+    buildCommand: npm install --omit=dev
+    startCommand: npm start       # runs server-clean.js
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
-      - key: NOWPAYMENTS_API_KEY
-        value: BT0AHVQ-MM8M4Z2-H57T2NC-V4EM2QG
       - key: PORT
         value: 10000
+
+      # Single-origin: API and the checkout pages live on the same Render URL.
+      # After the first deploy, replace these with your real *.onrender.com host
+      # (or your custom domain).
       - key: BASE_URL
-        value: https://poffbank-api.onrender.com
+        value: https://poffbank-secure-payments.onrender.com
+      - key: FRONTEND_URL
+        value: https://poffbank-secure-payments.onrender.com
+
+      - key: COMPANY_NAME
+        value: PoffBank Secure Payments
+      - key: COMPANY_SHORT
+        value: PoffBank
+      - key: DEFAULT_CURRENCY
+        value: usd
+      - key: DEFAULT_CRYPTO_CURRENCY
+        value: usdttrc20
+
+      # Secrets — set the actual values in the Render dashboard,
+      # NOT in this file. sync:false tells Render to keep them out of git.
+      - key: NOWPAYMENTS_API_KEY
+        sync: false
+      - key: NOWPAYMENTS_IPN_SECRET
+        sync: false

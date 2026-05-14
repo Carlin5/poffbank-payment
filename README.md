@@ -134,3 +134,42 @@ For PoffBank: Contact your account manager
 ---
 
 **PoffBank Panama Offshore Bank** - Secure offshore financial services
+
+---
+
+## Clean Implementation (recommended)
+
+The original `server.js` collected raw card data and tried to bridge Flutterwave
+charges to NOWPayments invoices, which doesn't actually move money to your USDT
+wallet. The clean replacement is `server-clean.js` and uses NOWPayments' hosted
+invoice the way it's designed to be used.
+
+### Flow
+
+1. Customer opens `/pay.html` and enters amount + email.
+2. Frontend calls `POST /api/invoice` → backend calls NOWPayments `/v1/invoice`.
+3. Customer is redirected to the NOWPayments hosted page and pays in USDT/BTC/etc.
+4. NOWPayments converts (if needed) and settles **USDT TRC-20** to the wallet
+   configured in your NOWPayments dashboard payout settings.
+5. NOWPayments calls `POST /api/webhook/nowpayments` with an HMAC-SHA512 signed
+   payload; we verify it with `NOWPAYMENTS_IPN_SECRET` and update the order.
+6. Frontend can poll `GET /api/payment/status/:orderId`.
+
+### Run it
+
+```bash
+npm install
+# fill NOWPAYMENTS_API_KEY and NOWPAYMENTS_IPN_SECRET in .env
+npm start             # runs server-clean.js
+npm run start:legacy  # (optional) old server, kept for reference
+```
+
+Then open `http://localhost:3000/pay.html`.
+
+### What is NOT done by this server
+
+- No raw card numbers, CVVs, or expiry dates ever touch this server. Card data
+  is entered on NOWPayments' (or their on-ramp partner's) PCI-DSS compliant
+  hosted page.
+- No "simulation" success path. An order is only marked `completed` after a
+  signed NOWPayments IPN confirms the on-chain settlement.

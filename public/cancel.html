@@ -4,213 +4,110 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Cancelled — PoffBank Secure Payments</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --bg-primary: #0a0a0f;
-            --bg-secondary: #12121a;
-            --bg-card: #1a1a25;
-            --text-primary: #ffffff;
-            --text-secondary: #a0a0b0;
-            --error: #ef4444;
-            --border: #2a2a3a;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-        }
-
-        .cancel-container {
-            width: 100%;
-            max-width: 480px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 3rem 2rem;
-            text-align: center;
-        }
-
-        .cancel-icon {
-            width: 80px;
-            height: 80px;
-            background: rgba(239, 68, 68, 0.1);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1.5rem;
-            font-size: 2.5rem;
-            color: var(--error);
-        }
-
-        .cancel-title {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.75rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-        }
-
-        .cancel-message {
-            color: var(--text-secondary);
-            margin-bottom: 2rem;
-            line-height: 1.6;
-        }
-
-        .reason-box {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            text-align: left;
-        }
-
-        .reason-title {
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-        }
-
-        .reason-list {
-            list-style: none;
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
-
-        .reason-list li {
-            margin-bottom: 0.5rem;
-            padding-left: 1.5rem;
-            position: relative;
-        }
-
-        .reason-list li::before {
-            content: '•';
-            position: absolute;
-            left: 0;
-            color: var(--error);
-        }
-
-        .action-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            padding: 1rem 2rem;
-            border-radius: 12px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s;
-            cursor: pointer;
-            border: none;
-        }
-
-        .btn-primary {
-            background: var(--error);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
-        }
-
-        .btn-secondary {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            background: var(--bg-primary);
-        }
-
-        .support-info {
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 1px solid var(--border);
-        }
-
-        .support-info p {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .support-email {
-            color: var(--text-primary);
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .support-email:hover {
-            text-decoration: underline;
-        }
+        .status-page { min-height: calc(100vh - 200px); display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+        .status-card { width: 100%; max-width: 560px; background: white; border-radius: 24px; padding: 48px 40px; box-shadow: 0 25px 80px rgba(0,0,0,0.08), 0 0 0 1px rgba(220,38,38,0.05); text-align: center; }
+        .status-icon-wrap { width: 96px; height: 96px; margin: 0 auto 24px; border-radius: 50%; background: linear-gradient(135deg, #dc2626, #b91c1c); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 30px rgba(220,38,38,0.35); }
+        .status-icon-wrap svg { width: 44px; height: 44px; color: white; }
+        .status-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 8px; }
+        .status-message { color: #6b7280; font-size: 15px; line-height: 1.6; margin-bottom: 28px; }
+        .reasons { background: #fef2f2; border: 1px solid #fecaca; border-radius: 16px; padding: 18px 22px; margin-bottom: 24px; text-align: left; }
+        .reasons h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 700; color: #991b1b; margin-bottom: 10px; }
+        .reasons ul { list-style: none; padding: 0; margin: 0; color: #6b7280; font-size: 14px; }
+        .reasons li { padding-left: 22px; position: relative; margin-bottom: 6px; }
+        .reasons li::before { content: '•'; position: absolute; left: 6px; color: #dc2626; font-weight: 700; }
+        .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; text-decoration: none; transition: transform .15s, box-shadow .15s; cursor: pointer; border: none; }
+        .btn-primary { background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; box-shadow: 0 6px 20px rgba(220,38,38,0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(220,38,38,0.4); }
+        .btn-secondary { background: white; color: #374151; border: 1px solid #e5e7eb; }
+        .btn-secondary:hover { background: #f9fafb; }
+        .reference { color: #9ca3af; font-size: 12px; margin-top: 18px; }
+        .reference code { background: #f3f4f6; padding: 2px 8px; border-radius: 6px; color: #374151; font-family: ui-monospace, monospace; }
     </style>
 </head>
 <body>
-    <div class="cancel-container">
-        <div class="cancel-icon">✕</div>
-        <h1 class="cancel-title">Payment Cancelled</h1>
-        <p class="cancel-message">
-            Your payment was not completed. No charges have been made to your account.
-        </p>
-        
-        <div class="reason-box">
-            <h3 class="reason-title">Common Reasons</h3>
-            <ul class="reason-list">
-                <li>Payment was cancelled by user</li>
-                <li>Transaction timed out</li>
-                <li>Insufficient funds</li>
-                <li>Payment method declined</li>
-                <li>Network connection issue</li>
-            </ul>
-        </div>
-        
-        <div class="action-buttons">
-            <a href="/pay.html" class="btn btn-primary">
-                <span>↻</span>
-                <span>Try Again</span>
-            </a>
-            <a href="/pay.html" class="btn btn-secondary">
-                <span>←</span>
-                <span>Back to Checkout</span>
-            </a>
-        </div>
-        
-        <div class="support-info">
-            <p>Need help with your payment?</p>
-            <a href="mailto:support@poffbank.com" class="support-email">support@poffbank.com</a>
-            <p style="margin-top:1rem;font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;">PoffBank Secure Payments</p>
-        </div>
+    <div class="bg-animation">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
     </div>
 
+    <header class="header">
+        <div class="header-glow"></div>
+        <div class="container">
+            <a href="/pay.html" class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 48 48" fill="none">
+                        <defs>
+                            <linearGradient id="logoGrad3" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#dc2626"/>
+                                <stop offset="100%" style="stop-color:#b91c1c"/>
+                            </linearGradient>
+                        </defs>
+                        <rect width="48" height="48" rx="12" fill="url(#logoGrad3)"/>
+                        <path d="M24 8L10 18V22H38V18L24 8Z" fill="white"/>
+                        <rect x="12" y="22" width="6" height="14" rx="1" fill="white"/>
+                        <rect x="21" y="22" width="6" height="14" rx="1" fill="white"/>
+                        <rect x="30" y="22" width="6" height="14" rx="1" fill="white"/>
+                        <rect x="8" y="36" width="32" height="4" rx="1" fill="white"/>
+                        <circle cx="24" cy="15" r="2" fill="#dc2626"/>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <span class="logo-main">PoffBank</span>
+                    <span class="logo-sub">Secure Payments</span>
+                </div>
+            </a>
+        </div>
+    </header>
+
+    <main class="status-page">
+        <div class="status-card">
+            <div class="status-icon-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="15" y1="9" x2="9" y2="15"/>
+                    <line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+            </div>
+            <h1 class="status-title">Payment Cancelled</h1>
+            <p class="status-message">Your payment was not completed. No charges have been made.</p>
+
+            <div class="reasons">
+                <h3>Common Reasons</h3>
+                <ul>
+                    <li>Payment was cancelled by the customer</li>
+                    <li>Transaction timed out before completion</li>
+                    <li>Insufficient funds or declined payment method</li>
+                    <li>Network connection interrupted</li>
+                </ul>
+            </div>
+
+            <div class="actions">
+                <a href="/pay.html" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    <span>Try Again</span>
+                </a>
+                <a href="mailto:support@poffbank.com" class="btn btn-secondary">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <span>Contact Support</span>
+                </a>
+            </div>
+
+            <p class="reference" id="reference"></p>
+        </div>
+    </main>
+
     <script>
-        // Surface the order id if available for support reference.
         const urlParams = new URLSearchParams(window.location.search);
         const orderId = urlParams.get('order_id') || urlParams.get('invoice_id');
         if (orderId) {
-            const ref = document.createElement('p');
-            ref.style.cssText = 'color:var(--text-secondary);font-size:.8rem;margin-top:1rem;';
-            ref.innerHTML = 'Reference: <code style="color:var(--text-primary);">' + orderId + '</code>';
-            document.querySelector('.support-info').appendChild(ref);
+            document.getElementById('reference').innerHTML = 'Reference: <code>' + orderId + '</code>';
         }
     </script>
 </body>

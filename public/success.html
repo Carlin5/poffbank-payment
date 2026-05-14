@@ -4,191 +4,115 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Successful — PoffBank Secure Payments</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --bg-primary: #0a0a0f;
-            --bg-secondary: #12121a;
-            --bg-card: #1a1a25;
-            --text-primary: #ffffff;
-            --text-secondary: #a0a0b0;
-            --success: #10b981;
-            --border: #2a2a3a;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-        }
-
-        .success-container {
-            width: 100%;
-            max-width: 480px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 3rem 2rem;
-            text-align: center;
-        }
-
-        .success-icon {
-            width: 80px;
-            height: 80px;
-            background: rgba(16, 185, 129, 0.1);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1.5rem;
-            font-size: 2.5rem;
-            color: var(--success);
-        }
-
-        .success-title {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.75rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-        }
-
-        .success-message {
-            color: var(--text-secondary);
-            margin-bottom: 2rem;
-            line-height: 1.6;
-        }
-
-        .receipt-box {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            text-align: left;
-        }
-
-        .receipt-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.75rem;
-            font-size: 0.875rem;
-        }
-
-        .receipt-row:last-child {
-            margin-bottom: 0;
-            padding-top: 0.75rem;
-            border-top: 1px solid var(--border);
-        }
-
-        .receipt-label {
-            color: var(--text-secondary);
-        }
-
-        .receipt-value {
-            font-weight: 500;
-        }
-
-        .receipt-value.total {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--success);
-        }
-
-        .transaction-hash {
-            background: var(--bg-primary);
-            padding: 0.75rem;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 0.75rem;
-            word-break: break-all;
-            margin-top: 0.75rem;
-        }
-
-        .back-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 1rem 2rem;
-            background: var(--success);
-            border: none;
-            border-radius: 12px;
-            color: white;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .back-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
-        }
-
-        .merchant-info {
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 1px solid var(--border);
-        }
-
-        .merchant-name {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
+        .status-page { min-height: calc(100vh - 200px); display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+        .status-card { width: 100%; max-width: 560px; background: white; border-radius: 24px; padding: 48px 40px; box-shadow: 0 25px 80px rgba(0,0,0,0.08), 0 0 0 1px rgba(220,38,38,0.05); text-align: center; }
+        .status-icon-wrap { width: 96px; height: 96px; margin: 0 auto 24px; border-radius: 50%; background: linear-gradient(135deg, #22c55e, #16a34a); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 30px rgba(34,197,94,0.35); }
+        .status-icon-wrap.pending { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 12px 30px rgba(245,158,11,0.35); }
+        .status-icon-wrap.failed { background: linear-gradient(135deg, #dc2626, #b91c1c); box-shadow: 0 12px 30px rgba(220,38,38,0.35); }
+        .status-icon-wrap svg { width: 48px; height: 48px; color: white; }
+        .status-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 8px; }
+        .status-message { color: #6b7280; font-size: 15px; line-height: 1.6; margin-bottom: 28px; }
+        .receipt { text-align: left; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px 22px; margin-bottom: 24px; }
+        .receipt .row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 14px; }
+        .receipt .row + .row { border-top: 1px solid #f0f0f4; }
+        .receipt .label { color: #6b7280; }
+        .receipt .value { color: #111827; font-weight: 600; font-family: 'Inter', sans-serif; }
+        .receipt .value.amount { font-size: 22px; color: #dc2626; }
+        .receipt .value.confirmed { color: #16a34a; }
+        .receipt .value.pending { color: #d97706; }
+        .receipt .value.failed { color: #dc2626; }
+        .tx-hash { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; margin-top: 4px; font-family: ui-monospace, monospace; font-size: 12px; color: #374151; word-break: break-all; }
+        .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; text-decoration: none; transition: transform .15s, box-shadow .15s; cursor: pointer; border: none; }
+        .btn-primary { background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; box-shadow: 0 6px 20px rgba(220,38,38,0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(220,38,38,0.4); }
+        .btn-secondary { background: white; color: #374151; border: 1px solid #e5e7eb; }
+        .btn-secondary:hover { background: #f9fafb; }
     </style>
 </head>
 <body>
-    <div class="success-container">
-        <div class="success-icon">✓</div>
-        <h1 class="success-title">Payment Successful!</h1>
-        <p class="success-message" id="message">
-            Your payment is being confirmed on-chain. This page will update automatically.
-        </p>
-        
-        <div class="receipt-box">
-            <div class="receipt-row">
-                <span class="receipt-label">Order ID</span>
-                <span class="receipt-value" id="orderId">—</span>
-            </div>
-            <div class="receipt-row">
-                <span class="receipt-label">Amount</span>
-                <span class="receipt-value total" id="amount">$0.00</span>
-            </div>
-            <div class="receipt-row">
-                <span class="receipt-label">Currency</span>
-                <span class="receipt-value">USDT (TRC20)</span>
-            </div>
-            <div class="receipt-row">
-                <span class="receipt-label">Status</span>
-                <span class="receipt-value" id="status" style="color: var(--success);">Confirming…</span>
-            </div>
-            <div class="receipt-row">
-                <span class="receipt-label">Transaction Hash</span>
-            </div>
-            <div class="transaction-hash" id="txHash">
-                Pending…
-            </div>
-        </div>
-        
-        <a href="/pay.html" class="back-button">
-            <span>←</span>
-            <span>New Payment</span>
-        </a>
-        
-        <div class="merchant-info">
-            <p class="merchant-name">PoffBank Secure Payments</p>
-        </div>
+    <div class="bg-animation">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
     </div>
+
+    <header class="header">
+        <div class="header-glow"></div>
+        <div class="container">
+            <a href="/pay.html" class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 48 48" fill="none">
+                        <defs>
+                            <linearGradient id="logoGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#dc2626"/>
+                                <stop offset="100%" style="stop-color:#b91c1c"/>
+                            </linearGradient>
+                        </defs>
+                        <rect width="48" height="48" rx="12" fill="url(#logoGrad2)"/>
+                        <path d="M24 8L10 18V22H38V18L24 8Z" fill="white"/>
+                        <rect x="12" y="22" width="6" height="14" rx="1" fill="white"/>
+                        <rect x="21" y="22" width="6" height="14" rx="1" fill="white"/>
+                        <rect x="30" y="22" width="6" height="14" rx="1" fill="white"/>
+                        <rect x="8" y="36" width="32" height="4" rx="1" fill="white"/>
+                        <circle cx="24" cy="15" r="2" fill="#dc2626"/>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <span class="logo-main">PoffBank</span>
+                    <span class="logo-sub">Secure Payments</span>
+                </div>
+            </a>
+        </div>
+    </header>
+
+    <main class="status-page">
+        <div class="status-card">
+            <div class="status-icon-wrap pending" id="iconWrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" id="iconSvg">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+            </div>
+            <h1 class="status-title" id="title">Confirming Your Payment…</h1>
+            <p class="status-message" id="message">We're waiting for on-chain confirmation. This page updates automatically.</p>
+
+            <div class="receipt">
+                <div class="row">
+                    <span class="label">Order ID</span>
+                    <span class="value" id="orderId">—</span>
+                </div>
+                <div class="row">
+                    <span class="label">Amount</span>
+                    <span class="value amount" id="amount">$0.00</span>
+                </div>
+                <div class="row">
+                    <span class="label">Currency</span>
+                    <span class="value">USDT (TRC-20)</span>
+                </div>
+                <div class="row">
+                    <span class="label">Status</span>
+                    <span class="value pending" id="status">Confirming…</span>
+                </div>
+                <div class="row" style="display: block;">
+                    <span class="label">Transaction Hash</span>
+                    <div class="tx-hash" id="txHash">Pending…</div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <a href="/pay.html" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    <span>Make Another Payment</span>
+                </a>
+            </div>
+        </div>
+    </main>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
@@ -197,47 +121,50 @@
             || urlParams.get('invoice_id')
             || (function () { try { return localStorage.getItem('poffbank.lastOrderId'); } catch (e) { return null; } })();
 
-        const STATUS_LABELS = {
-            waiting: { text: 'Awaiting payment', color: '#f59e0b' },
-            confirming: { text: 'Confirming on-chain', color: '#f59e0b' },
-            partially_paid: { text: 'Partially paid', color: '#f59e0b' },
-            completed: { text: 'Confirmed', color: 'var(--success)' },
-            failed: { text: 'Failed', color: '#ef4444' },
+        const ICONS = {
+            pending: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+            confirmed: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+            failed: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+        };
+
+        const STATES = {
+            waiting:        { title: 'Awaiting Payment',    msg: 'Send the crypto on the previous page to complete your payment.', icon: 'pending',   wrap: 'pending',  cls: 'pending' },
+            confirming:     { title: 'Confirming…',          msg: 'Your transaction has been received and is being confirmed on-chain.', icon: 'pending', wrap: 'pending', cls: 'pending' },
+            partially_paid: { title: 'Partially Paid',       msg: 'We received part of the payment. Please send the remaining amount.', icon: 'pending', wrap: 'pending', cls: 'pending' },
+            completed:     { title: 'Payment Successful!',   msg: 'Thank you. Your payment has been confirmed on-chain. A receipt has been sent to your email.', icon: 'confirmed', wrap: '',  cls: 'confirmed' },
+            failed:        { title: 'Payment Failed',        msg: 'This payment did not complete. Please start a new payment or contact support.', icon: 'failed', wrap: 'failed', cls: 'failed' },
         };
 
         if (orderId) {
             document.getElementById('orderId').textContent = orderId;
             poll();
         } else {
-            document.getElementById('message').textContent = 'No order reference found.';
+            document.getElementById('message').textContent = 'No order reference found. Please start a new payment.';
+        }
+
+        function setState(state) {
+            const cfg = STATES[state] || STATES.confirming;
+            document.getElementById('title').textContent = cfg.title;
+            document.getElementById('message').textContent = cfg.msg;
+            const wrap = document.getElementById('iconWrap');
+            wrap.className = 'status-icon-wrap ' + cfg.wrap;
+            document.getElementById('iconSvg').innerHTML = ICONS[cfg.icon];
+            const st = document.getElementById('status');
+            st.textContent = cfg.title.replace('…', '').replace('!', '');
+            st.className = 'value ' + cfg.cls;
         }
 
         async function poll() {
             try {
-                const res = await fetch(`/api/payment/status/${encodeURIComponent(orderId)}`);
+                const res = await fetch('/api/payment/status/' + encodeURIComponent(orderId));
                 const data = await res.json();
                 if (data && data.success) {
-                    const amt = Number(data.amount || 0).toFixed(2);
-                    document.getElementById('amount').textContent = '$' + amt;
-                    const lbl = STATUS_LABELS[data.status] || { text: data.status || '—', color: 'var(--text-secondary)' };
-                    const statusEl = document.getElementById('status');
-                    statusEl.textContent = lbl.text;
-                    statusEl.style.color = lbl.color;
+                    document.getElementById('amount').textContent = '$' + Number(data.amount || 0).toFixed(2);
                     document.getElementById('txHash').textContent = data.txHash || 'Pending…';
-                    if (data.status === 'completed') {
-                        document.getElementById('message').textContent =
-                            'Thank you. Your payment has been confirmed on-chain.';
-                        return; // stop polling
-                    }
-                    if (data.status === 'failed') {
-                        document.getElementById('message').textContent =
-                            'This payment did not complete. Please start a new payment.';
-                        return;
-                    }
+                    setState(data.status);
+                    if (data.status === 'completed' || data.status === 'failed') return;
                 }
-            } catch (err) {
-                console.warn('status poll failed', err);
-            }
+            } catch (err) { console.warn('status poll failed', err); }
             setTimeout(poll, 5000);
         }
     </script>

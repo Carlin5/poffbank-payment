@@ -3,70 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Successful — PoffBank Secure Payments</title>
+    <title>Payment Status — PoffBank</title>
+    <link rel="icon" href="https://poffbank.com/public/uploads/media/logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
-    <style>
-        .status-page { min-height: calc(100vh - 200px); display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
-        .status-card { width: 100%; max-width: 560px; background: white; border-radius: 24px; padding: 48px 40px; box-shadow: 0 25px 80px rgba(0,0,0,0.08), 0 0 0 1px rgba(220,38,38,0.05); text-align: center; }
-        .status-icon-wrap { width: 96px; height: 96px; margin: 0 auto 24px; border-radius: 50%; background: linear-gradient(135deg, #22c55e, #16a34a); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 30px rgba(34,197,94,0.35); }
-        .status-icon-wrap.pending { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 12px 30px rgba(245,158,11,0.35); }
-        .status-icon-wrap.failed { background: linear-gradient(135deg, #dc2626, #b91c1c); box-shadow: 0 12px 30px rgba(220,38,38,0.35); }
-        .status-icon-wrap svg { width: 48px; height: 48px; color: white; }
-        .status-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 8px; }
-        .status-message { color: #6b7280; font-size: 15px; line-height: 1.6; margin-bottom: 28px; }
-        .receipt { text-align: left; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px 22px; margin-bottom: 24px; }
-        .receipt .row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 14px; }
-        .receipt .row + .row { border-top: 1px solid #f0f0f4; }
-        .receipt .label { color: #6b7280; }
-        .receipt .value { color: #111827; font-weight: 600; font-family: 'Inter', sans-serif; }
-        .receipt .value.amount { font-size: 22px; color: #dc2626; }
-        .receipt .value.confirmed { color: #16a34a; }
-        .receipt .value.pending { color: #d97706; }
-        .receipt .value.failed { color: #dc2626; }
-        .tx-hash { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; margin-top: 4px; font-family: ui-monospace, monospace; font-size: 12px; color: #374151; word-break: break-all; }
-        .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; text-decoration: none; transition: transform .15s, box-shadow .15s; cursor: pointer; border: none; }
-        .btn-primary { background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; box-shadow: 0 6px 20px rgba(220,38,38,0.3); }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(220,38,38,0.4); }
-        .btn-secondary { background: white; color: #374151; border: 1px solid #e5e7eb; }
-        .btn-secondary:hover { background: #f9fafb; }
-    </style>
 </head>
 <body>
-    <div class="bg-animation">
-        <div class="gradient-orb orb-1"></div>
-        <div class="gradient-orb orb-2"></div>
-        <div class="gradient-orb orb-3"></div>
-    </div>
-
-    <header class="header">
-        <div class="header-glow"></div>
-        <div class="container">
-            <a href="/pay.html" class="logo">
-                <div class="logo-icon">
-                    <svg viewBox="0 0 48 48" fill="none">
-                        <defs>
-                            <linearGradient id="logoGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" style="stop-color:#dc2626"/>
-                                <stop offset="100%" style="stop-color:#b91c1c"/>
-                            </linearGradient>
-                        </defs>
-                        <rect width="48" height="48" rx="12" fill="url(#logoGrad2)"/>
-                        <path d="M24 8L10 18V22H38V18L24 8Z" fill="white"/>
-                        <rect x="12" y="22" width="6" height="14" rx="1" fill="white"/>
-                        <rect x="21" y="22" width="6" height="14" rx="1" fill="white"/>
-                        <rect x="30" y="22" width="6" height="14" rx="1" fill="white"/>
-                        <rect x="8" y="36" width="32" height="4" rx="1" fill="white"/>
-                        <circle cx="24" cy="15" r="2" fill="#dc2626"/>
-                    </svg>
-                </div>
-                <div class="logo-text">
-                    <span class="logo-main">PoffBank</span>
-                    <span class="logo-sub">Secure Payments</span>
-                </div>
+    <header class="site-header">
+        <div class="inner">
+            <a class="brand-link" href="/pay.html">
+                <img src="https://poffbank.com/public/uploads/media/logo.png" alt="PoffBank">
+                <span class="brand-text">
+                    <span class="brand-name">PoffBank</span>
+                    <span class="brand-tag">Secure Payments</span>
+                </span>
             </a>
         </div>
     </header>
@@ -74,45 +26,42 @@
     <main class="status-page">
         <div class="status-card">
             <div class="status-icon-wrap pending" id="iconWrap">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" id="iconSvg">
-                    <circle cx="12" cy="12" r="10"/>
-                    <polyline points="12 6 12 12 16 14"/>
+                <svg id="iconSvg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                 </svg>
             </div>
-            <h1 class="status-title" id="title">Confirming Your Payment…</h1>
+            <h1 class="status-title" id="title">Confirming your payment…</h1>
             <p class="status-message" id="message">We're waiting for on-chain confirmation. This page updates automatically.</p>
 
             <div class="receipt">
-                <div class="row">
-                    <span class="label">Order ID</span>
-                    <span class="value" id="orderId">—</span>
-                </div>
-                <div class="row">
-                    <span class="label">Amount</span>
-                    <span class="value amount" id="amount">$0.00</span>
-                </div>
-                <div class="row">
-                    <span class="label">Currency</span>
-                    <span class="value">USDT (TRC-20)</span>
-                </div>
-                <div class="row">
-                    <span class="label">Status</span>
-                    <span class="value pending" id="status">Confirming…</span>
-                </div>
-                <div class="row" style="display: block;">
-                    <span class="label">Transaction Hash</span>
+                <div class="row"><span class="lbl">Order ID</span><span class="val" id="orderId">—</span></div>
+                <div class="row"><span class="lbl">Amount</span><span class="val amount" id="amount">$0.00</span></div>
+                <div class="row"><span class="lbl">Currency</span><span class="val">USDT (TRC-20)</span></div>
+                <div class="row"><span class="lbl">Status</span><span class="val pending" id="status">Confirming…</span></div>
+                <div class="row" style="display:block;">
+                    <span class="lbl">Transaction Hash</span>
                     <div class="tx-hash" id="txHash">Pending…</div>
                 </div>
             </div>
 
             <div class="actions">
                 <a href="/pay.html" class="btn btn-primary">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                     <span>Make Another Payment</span>
                 </a>
             </div>
         </div>
     </main>
+
+    <footer class="site-footer">
+        <div class="inner">
+            <div class="copy">© 2025 PoffBank Secure Payments · All rights reserved</div>
+            <div class="certs">
+                <span class="cert-pill">PCI DSS Level 1</span>
+                <span class="cert-pill">ISO 27001</span>
+            </div>
+        </div>
+    </footer>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
@@ -123,16 +72,16 @@
 
         const ICONS = {
             pending: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-            confirmed: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
-            failed: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+            ok:      '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+            fail:    '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
         };
 
         const STATES = {
-            waiting:        { title: 'Awaiting Payment',    msg: 'Send the crypto on the previous page to complete your payment.', icon: 'pending',   wrap: 'pending',  cls: 'pending' },
-            confirming:     { title: 'Confirming…',          msg: 'Your transaction has been received and is being confirmed on-chain.', icon: 'pending', wrap: 'pending', cls: 'pending' },
-            partially_paid: { title: 'Partially Paid',       msg: 'We received part of the payment. Please send the remaining amount.', icon: 'pending', wrap: 'pending', cls: 'pending' },
-            completed:     { title: 'Payment Successful!',   msg: 'Thank you. Your payment has been confirmed on-chain. A receipt has been sent to your email.', icon: 'confirmed', wrap: '',  cls: 'confirmed' },
-            failed:        { title: 'Payment Failed',        msg: 'This payment did not complete. Please start a new payment or contact support.', icon: 'failed', wrap: 'failed', cls: 'failed' },
+            waiting:        { title: 'Awaiting payment',  msg: 'Send your payment on the previous page to complete this transaction.', wrap: 'pending', icon: 'pending', cls: 'pending', label: 'Waiting' },
+            confirming:     { title: 'Confirming…',        msg: 'Your transaction has been received and is being confirmed on-chain.', wrap: 'pending', icon: 'pending', cls: 'pending', label: 'Confirming' },
+            partially_paid: { title: 'Partially paid',     msg: 'We received part of the payment. Please send the remaining amount.', wrap: 'pending', icon: 'pending', cls: 'pending', label: 'Partial' },
+            completed:      { title: 'Payment successful', msg: 'Thank you. Your payment has been confirmed on-chain. A receipt has been sent to your email.', wrap: 'ok', icon: 'ok', cls: 'ok', label: 'Confirmed' },
+            failed:         { title: 'Payment failed',     msg: 'This payment did not complete. Please start a new payment or contact support.', wrap: 'fail', icon: 'fail', cls: 'fail', label: 'Failed' },
         };
 
         if (orderId) {
@@ -142,16 +91,15 @@
             document.getElementById('message').textContent = 'No order reference found. Please start a new payment.';
         }
 
-        function setState(state) {
-            const cfg = STATES[state] || STATES.confirming;
+        function setState(s) {
+            const cfg = STATES[s] || STATES.confirming;
             document.getElementById('title').textContent = cfg.title;
             document.getElementById('message').textContent = cfg.msg;
-            const wrap = document.getElementById('iconWrap');
-            wrap.className = 'status-icon-wrap ' + cfg.wrap;
+            document.getElementById('iconWrap').className = 'status-icon-wrap ' + cfg.wrap;
             document.getElementById('iconSvg').innerHTML = ICONS[cfg.icon];
             const st = document.getElementById('status');
-            st.textContent = cfg.title.replace('…', '').replace('!', '');
-            st.className = 'value ' + cfg.cls;
+            st.textContent = cfg.label;
+            st.className = 'val ' + cfg.cls;
         }
 
         async function poll() {

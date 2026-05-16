@@ -97,8 +97,22 @@
             <section class="card form-card" aria-label="Payment details">
                 <div class="card-head">
                     <h2>Payment details</h2>
-                    <p>You'll be redirected to our PCI-compliant processor to complete the payment.</p>
+                    <p>Choose how you'd like to pay. Both options are settled in USDT.</p>
                 </div>
+
+                <div class="method-toggle" role="radiogroup" aria-label="Payment method">
+                    <label class="method-option selected" data-method="hosted">
+                        <input type="radio" name="method" value="hosted" checked>
+                        <span class="mt-title">Hosted checkout</span>
+                        <span class="mt-sub">Card or crypto · secure processor</span>
+                    </label>
+                    <label class="method-option" data-method="direct">
+                        <input type="radio" name="method" value="direct">
+                        <span class="mt-title">Pay direct (USDT)</span>
+                        <span class="mt-sub">Send from your own wallet · TRC-20</span>
+                    </label>
+                </div>
+
                 <form id="paymentForm" class="form-body" novalidate>
                     <div class="field">
                         <div class="field-label"><span class="l">Email address</span><span class="h">For your receipt</span></div>
@@ -125,22 +139,29 @@
                         </div>
                     </div>
 
-                    <div class="notice">
+                    <div class="notice" id="hostedNotice">
                         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
                         <div>
                             <div class="t">Hosted secure checkout</div>
                             <div class="d">Card details (if used) are entered on the processor's PCI-DSS page — they never touch PoffBank servers.</div>
                         </div>
                     </div>
+                    <div class="notice" id="directNotice" style="display:none;">
+                        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg></div>
+                        <div>
+                            <div class="t">Pay direct from your USDT wallet</div>
+                            <div class="d">We'll show you our TRC-20 wallet address and a QR code. After sending, paste your transaction hash and we'll verify it on-chain.</div>
+                        </div>
+                    </div>
 
                     <button type="submit" class="btn-pay" id="payButton">
                         <span class="label-default">
                             <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                            <span>Continue to Secure Payment</span>
+                            <span id="payButtonLabel">Continue to Secure Payment</span>
                         </span>
                         <span class="label-loading">
                             <span class="spinner"></span>
-                            <span>Creating secure invoice…</span>
+                            <span id="payButtonLoadingLabel">Creating secure invoice…</span>
                         </span>
                     </button>
 
@@ -171,6 +192,34 @@
             display.textContent = Number.isFinite(v) && v > 0 ? v.toFixed(2) : '0.00';
         });
 
+        // Method toggle
+        const methodOptions = document.querySelectorAll('.method-option');
+        const hostedNotice = document.getElementById('hostedNotice');
+        const directNotice = document.getElementById('directNotice');
+        const payLabel = document.getElementById('payButtonLabel');
+        const payLoadingLabel = document.getElementById('payButtonLoadingLabel');
+
+        function selectMethod(method) {
+            methodOptions.forEach(o => {
+                const sel = o.dataset.method === method;
+                o.classList.toggle('selected', sel);
+                const input = o.querySelector('input');
+                if (input) input.checked = sel;
+            });
+            if (method === 'direct') {
+                hostedNotice.style.display = 'none';
+                directNotice.style.display = '';
+                payLabel.textContent = 'Show Wallet & Instructions';
+                payLoadingLabel.textContent = 'Preparing your order…';
+            } else {
+                hostedNotice.style.display = '';
+                directNotice.style.display = 'none';
+                payLabel.textContent = 'Continue to Secure Payment';
+                payLoadingLabel.textContent = 'Creating secure invoice…';
+            }
+        }
+        methodOptions.forEach(o => o.addEventListener('click', () => selectMethod(o.dataset.method)));
+
         const form = document.getElementById('paymentForm');
         const btn  = document.getElementById('payButton');
         const err  = document.getElementById('errorBox');
@@ -185,6 +234,7 @@
             const amount = parseFloat(amountInput.value);
             const email = document.getElementById('email').value.trim();
             const description = document.getElementById('description').value.trim();
+            const method = document.querySelector('input[name="method"]:checked')?.value || 'hosted';
 
             if (!Number.isFinite(amount) || amount < 1) {
                 showError('Please enter an amount of at least $1.00.');
@@ -195,8 +245,10 @@
             btn.classList.add('loading');
             btn.disabled = true;
 
+            const endpoint = method === 'direct' ? '/api/direct-invoice' : '/api/invoice';
+
             try {
-                const res = await fetch('/api/invoice', {
+                const res = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -206,11 +258,17 @@
                     }),
                 });
                 const data = await res.json();
-                if (!res.ok || !data.success || !data.invoiceUrl) {
-                    throw new Error(data.error || 'Could not create invoice. Please try again.');
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || 'Could not create order. Please try again.');
                 }
                 try { localStorage.setItem('poffbank.lastOrderId', data.orderId); } catch {}
-                window.location.href = data.invoiceUrl;
+
+                if (method === 'direct') {
+                    window.location.href = '/pay-direct.html?order_id=' + encodeURIComponent(data.orderId);
+                } else {
+                    if (!data.invoiceUrl) throw new Error('No invoice URL returned.');
+                    window.location.href = data.invoiceUrl;
+                }
             } catch (e2) {
                 showError(e2.message || 'Something went wrong. Please try again.');
                 btn.classList.remove('loading');

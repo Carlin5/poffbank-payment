@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pay with USDT (TRC-20) — PoffBank</title>
+    <link rel="icon" href="https://poffbank.com/public/uploads/media/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="inner">
+            <a class="brand-link" href="/pay.html">
+                <img src="https://poffbank.com/public/uploads/media/logo.png" alt="PoffBank">
+                <span class="brand-text">
+                    <span class="brand-name">PoffBank</span>
+                    <span class="brand-tag">Secure Payments</span>
+                </span>
+            </a>
+            <div class="trust-pills">
+                <span class="trust-pill">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                    On-chain verified
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="page">
+        <div class="page-head">
+            <h1>Pay with USDT (TRC-20)</h1>
+            <p class="lede">Send the exact amount from your own wallet, then paste the transaction hash so we can verify it on the Tron blockchain.</p>
+        </div>
+
+        <div id="loading" class="card card-pad" style="text-align:center;">Loading order…</div>
+
+        <div id="content" style="display:none;">
+            <div class="status-banner waiting" id="statusBanner">
+                <span class="pulse"></span>
+                <span id="statusText">Awaiting your payment. Send the USDT now — we'll verify it as soon as you submit the transaction hash.</span>
+            </div>
+
+            <div class="warn-bar">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9"  x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <div>
+                    <strong>Important:</strong> Send <strong>USDT on the Tron network (TRC-20) only</strong>. Funds sent on a different network (ERC-20, BEP-20, etc.) will be lost.
+                </div>
+            </div>
+
+            <div class="pay-grid">
+                <!-- Left: QR + amount -->
+                <aside class="qr-card">
+                    <img id="qrImg" class="qr-img" alt="Wallet address QR code" loading="lazy">
+                    <div class="net-pill">USDT · TRC-20 Network</div>
+                    <div class="amount-due">
+                        <span class="lbl">Send exactly</span>
+                        <span class="val"><span id="amountValue">0.00</span> USDT</span>
+                        <span class="sub">≈ $<span id="amountUsd">0.00</span> USD</span>
+                    </div>
+                </aside>
+
+                <!-- Right: instructions + tx submission -->
+                <section class="card card-pad">
+                    <h3 style="margin:0 0 6px; font-family:'Plus Jakarta Sans','Inter',sans-serif; color:var(--navy); font-size:18px;">How to pay</h3>
+                    <p style="margin:0 0 4px; color:var(--muted); font-size:13.5px;">Follow these steps, then return here to confirm.</p>
+
+                    <ol class="steps">
+                        <li>Open your USDT wallet (TronLink, Trust Wallet, Binance, Bybit, etc.) and choose <strong>Send / Withdraw USDT</strong> on the <code>TRC-20</code> network.</li>
+                        <li>Paste the wallet address below as the destination, or scan the QR code on the left.</li>
+                        <li>Set the amount to exactly <strong><span id="stepAmount">0.00</span> USDT</strong> and send the transaction.</li>
+                        <li>Once your wallet shows the transaction, copy its <strong>transaction hash (TxID)</strong> and paste it below.</li>
+                    </ol>
+
+                    <div class="field">
+                        <div class="field-label"><span class="l">Our USDT wallet (TRC-20)</span><span class="h">Tap to copy</span></div>
+                        <div class="copy-row">
+                            <input id="walletInput" type="text" readonly>
+                            <button class="copy-btn" type="button" data-target="walletInput">
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                <span>Copy</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <div class="field-label"><span class="l">Order reference</span><span class="h">Keep for your records</span></div>
+                        <div class="copy-row">
+                            <input id="orderInput" type="text" readonly>
+                            <button class="copy-btn" type="button" data-target="orderInput">
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                <span>Copy</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <hr style="border:none; border-top:1px solid var(--line); margin:20px 0;">
+
+                    <form id="txForm" novalidate>
+                        <div class="field">
+                            <div class="field-label"><span class="l">Transaction hash (TxID)</span><span class="h">64 hex characters</span></div>
+                            <div class="input-wrap">
+                                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>
+                                <input class="input" id="txHash" placeholder="e.g. 9a3f…b27c" autocomplete="off" spellcheck="false">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-pay" id="submitBtn">
+                            <span class="label-default">
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Verify Payment On-Chain</span>
+                            </span>
+                            <span class="label-loading">
+                                <span class="spinner"></span>
+                                <span>Verifying on Tron…</span>
+                            </span>
+                        </button>
+                        <div class="error-box" id="errorBox"></div>
+                    </form>
+
+                    <p class="terms" style="margin-top:18px;">
+                        Need help? <a href="mailto:support@poffbank.com">support@poffbank.com</a> &nbsp;·&nbsp;
+                        <a id="explorerLink" href="#" target="_blank" rel="noopener">View wallet on Tronscan</a>
+                    </p>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="inner">
+            <div class="copy">© 2025 PoffBank Secure Payments · All rights reserved</div>
+            <div class="certs">
+                <span class="cert-pill">On-Chain Verified</span>
+                <span class="cert-pill">USDT TRC-20</span>
+            </div>
+        </div>
+    </footer>
+
+    <div class="toast" id="toast">Copied</div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const orderId = params.get('order_id') || params.get('orderId');
+
+        const $loading = document.getElementById('loading');
+        const $content = document.getElementById('content');
+        const $toast = document.getElementById('toast');
+        const $err = document.getElementById('errorBox');
+        const $banner = document.getElementById('statusBanner');
+        const $statusText = document.getElementById('statusText');
+
+        function toast(msg) {
+            $toast.textContent = msg;
+            $toast.classList.add('show');
+            setTimeout(() => $toast.classList.remove('show'), 1600);
+        }
+        function showError(msg) { $err.textContent = msg; $err.classList.add('show'); }
+        function clearError()   { $err.classList.remove('show'); $err.textContent = ''; }
+
+        function setBanner(state, text) {
+            $banner.className = 'status-banner ' + state;
+            $statusText.textContent = text;
+        }
+
+        if (!orderId) {
+            $loading.textContent = 'No order reference in URL. Go back to /pay.html and try again.';
+        } else {
+            init();
+        }
+
+        async function init() {
+            let data;
+            try {
+                const res = await fetch('/api/payment/status/' + encodeURIComponent(orderId));
+                data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.error || 'Order not found.');
+            } catch (e) {
+                $loading.textContent = e.message || 'Could not load order.';
+                return;
+            }
+            if (data.method !== 'direct') {
+                $loading.innerHTML = 'This order is not a direct payment. <a href="/pay.html">Start a new payment</a>.';
+                return;
+            }
+
+            const amount = Number(data.amount || 0);
+            document.getElementById('amountValue').textContent = amount.toFixed(2);
+            document.getElementById('amountUsd').textContent  = amount.toFixed(2);
+            document.getElementById('stepAmount').textContent = amount.toFixed(2);
+            document.getElementById('walletInput').value = data.wallet || '';
+            document.getElementById('orderInput').value  = data.orderId;
+
+            // QR code via QR Server (free public API) — encodes a tron: URI.
+            const tronUri = 'tron:' + (data.wallet || '') + '?token=' + 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t' + '&amount=' + amount;
+            const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=4&data=' + encodeURIComponent(tronUri);
+            document.getElementById('qrImg').src = qrSrc;
+
+            document.getElementById('explorerLink').href = 'https://tronscan.org/#/address/' + encodeURIComponent(data.wallet || '');
+
+            $loading.style.display = 'none';
+            $content.style.display = '';
+
+            applyStatus(data.status);
+            // Start passive polling — we'll still poll without the user submitting,
+            // in case they pay from a wallet that we can detect via tx hash later.
+            setTimeout(poll, 8000);
+        }
+
+        function applyStatus(s) {
+            if (s === 'completed') {
+                setBanner('completed', 'Payment confirmed on-chain. Redirecting to your receipt…');
+                setTimeout(() => {
+                    window.location.href = '/success.html?order_id=' + encodeURIComponent(orderId);
+                }, 1200);
+            } else if (s === 'confirming') {
+                setBanner('confirming', 'We received your transaction hash and are verifying it on the Tron network. This usually takes a few seconds.');
+            } else if (s === 'failed') {
+                setBanner('failed', 'This payment did not verify. See the error below and try again, or contact support.');
+            } else {
+                setBanner('waiting', 'Awaiting your payment. Send the USDT now — we\'ll verify it as soon as you submit the transaction hash.');
+            }
+        }
+
+        async function poll() {
+            try {
+                const res = await fetch('/api/payment/status/' + encodeURIComponent(orderId));
+                const data = await res.json();
+                if (data && data.success) applyStatus(data.status);
+                if (data?.status === 'completed' || data?.status === 'failed') return;
+            } catch (e) { /* swallow and retry */ }
+            setTimeout(poll, 8000);
+        }
+
+        // Copy buttons
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const target = document.getElementById(btn.dataset.target);
+                if (!target) return;
+                try {
+                    await navigator.clipboard.writeText(target.value);
+                } catch {
+                    target.select();
+                    document.execCommand('copy');
+                }
+                btn.classList.add('copied');
+                btn.querySelector('span').textContent = 'Copied';
+                toast('Copied to clipboard');
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.querySelector('span').textContent = 'Copy';
+                }, 1600);
+            });
+        });
+
+        // Tx submit
+        document.getElementById('txForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearError();
+            const txInput = document.getElementById('txHash');
+            const submitBtn = document.getElementById('submitBtn');
+            let txHash = txInput.value.trim().replace(/^0x/i, '');
+            if (!/^[0-9a-fA-F]{64}$/.test(txHash)) {
+                showError('Transaction hash must be 64 hexadecimal characters.');
+                txInput.focus();
+                return;
+            }
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+            setBanner('confirming', 'Submitting your transaction hash and verifying on the Tron network…');
+
+            try {
+                const res = await fetch('/api/direct-invoice/' + encodeURIComponent(orderId) + '/submit-tx', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ txHash }),
+                });
+                const data = await res.json();
+                if (data.status === 'completed') {
+                    applyStatus('completed'); // triggers redirect
+                    return;
+                }
+                if (data.status === 'confirming') {
+                    setBanner('confirming', data.message || 'Verification pending — we\'ll keep checking.');
+                    submitBtn.classList.remove('loading');
+                    submitBtn.disabled = false;
+                    return;
+                }
+                // Failed
+                showError(data.error || 'Verification failed.');
+                setBanner('failed', data.error || 'Verification failed. Please check the transaction hash and amount, or contact support.');
+            } catch (e2) {
+                showError(e2.message || 'Network error. Try again.');
+            } finally {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

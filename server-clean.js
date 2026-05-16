@@ -127,13 +127,13 @@ async function npCreateInvoice({ amount, orderId, description, email }) {
     cancel_url: `${FRONTEND_URL}/cancel.html?order_id=${encodeURIComponent(orderId)}`,
     is_fee_paid_by_user: false,
     customer_email: email || undefined,
-    // Auto-forward settled funds to our merchant USDT (TRC-20) wallet so both
-    // payment methods land in the same address. NOWPayments will accept these
-    // fields when "Custom payouts" is enabled on the account; otherwise they
-    // are silently ignored and funds stay in the NOWPayments balance (you can
-    // still mirror this by setting the payout wallet once in the dashboard).
-    payout_address: USDT_TRC20_WALLET,
-    payout_currency: 'usdttrc20',
+    // NOTE: NOWPayments invoices don't accept `payout_address` per-request
+    // (their API returns "payout_address is not allowed"). To route hosted
+    // checkout settlements to our merchant wallet, set it ONCE in the
+    // NOWPayments dashboard → Store Settings → Payout Wallets → USDT TRC-20:
+    //   ${USDT_TRC20_WALLET}
+    // All hosted invoices will then auto-forward there. Direct (TRC-20)
+    // payments already go straight to this wallet on-chain.
   };
   const { data } = await np.post('/invoice', payload);
   return data; // { id, invoice_url, order_id, ... }

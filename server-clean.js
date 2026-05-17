@@ -49,6 +49,34 @@ const USDT_TRC20_CONTRACT = process.env.USDT_TRC20_CONTRACT || 'TR7NHqjeKQxGTCi8
 const TRONGRID_API_URL = process.env.TRONGRID_API_URL || 'https://api.trongrid.io';
 const TRONGRID_API_KEY = process.env.TRONGRID_API_KEY; // optional; raises rate limits
 
+// Multi-coin payout wallets (used for display + future direct-pay-with-coin flows).
+// Only USDT-TRC20 is currently auto-verified on-chain; the others are exposed
+// in /api/config so the frontend / Bitcart store can use them.
+const PAYOUT_WALLETS = {
+  USDTTRC20: USDT_TRC20_WALLET,
+  USDTPOLYGON: process.env.USDT_POLYGON_WALLET || '',
+  BTC: process.env.BTC_WALLET || '',
+  ETH: process.env.ETH_WALLET || '',
+};
+
+// ---------------------------------------------------------------------------
+// Bitcart (self-hosted) settings — see BITCART_SETUP.md
+// ---------------------------------------------------------------------------
+// To enable the "Self-hosted (Bitcart)" payment method, set all four:
+//   BITCART_API_URL       e.g. https://admin.your-bitcart.example.com
+//   BITCART_API_TOKEN     a "Manage Tokens" → Server Management token
+//   BITCART_STORE_ID      the numeric/uuid id of the Bitcart store
+//   BITCART_WEBHOOK_SECRET  random string also configured in Bitcart store webhook
+// BITCART_CHECKOUT_URL_TEMPLATE is optional and lets you point to a separate
+// public store URL (e.g. https://pay.your-bitcart.example.com/i/{id}).
+const BITCART_API_URL = (process.env.BITCART_API_URL || '').replace(/\/+$/, '');
+const BITCART_API_TOKEN = process.env.BITCART_API_TOKEN || '';
+const BITCART_STORE_ID = process.env.BITCART_STORE_ID || '';
+const BITCART_WEBHOOK_SECRET = process.env.BITCART_WEBHOOK_SECRET || '';
+const BITCART_CHECKOUT_URL_TEMPLATE = process.env.BITCART_CHECKOUT_URL_TEMPLATE
+  || (BITCART_API_URL ? `${BITCART_API_URL}/i/{id}` : '');
+const BITCART_ENABLED = Boolean(BITCART_API_URL && BITCART_API_TOKEN && BITCART_STORE_ID);
+
 if (!NOWPAYMENTS_API_KEY) {
   console.error('[FATAL] NOWPAYMENTS_API_KEY is not set in environment.');
   process.exit(1);
@@ -76,12 +104,14 @@ app.use(cors({
   },
 }));
 
-// IMPORTANT: keep the raw body for the webhook route so we can verify HMAC.
-// We mount raw() ONLY on the webhook path, and json() on everything else,
+// IMPORTANT: keep the raw body for webhook routes so we can verify HMAC.
+// We mount raw() ONLY on webhook paths, and json() on everything else,
 // to guarantee the buffer isn't consumed before signature verification.
+const RAW_BODY_PATHS = new Set(['/api/webhook/nowpayments', '/api/webhook/bitcart']);
 app.use('/api/webhook/nowpayments', express.raw({ type: '*/*', limit: '1mb' }));
+app.use('/api/webhook/bitcart',     express.raw({ type: '*/*', limit: '1mb' }));
 app.use((req, res, next) => {
-  if (req.path === '/api/webhook/nowpayments') return next();
+  if (RAW_BODY_PATHS.has(req.path)) return next();
   return express.json({ limit: '100kb' })(req, res, next);
 });
 // Serve ONLY the clean public directory. The old /index.html, /checkout.html,
@@ -266,6 +296,60 @@ async function verifyTronUsdtTransfer(txHash, expectedUsdt) {
 }
 
 // ---------------------------------------------------------------------------
+// Bitcart client (self-hosted, no-KYB invoicing)
+// ---------------------------------------------------------------------------
+const bitcart = BITCART_ENABLED
+  ? axios.create({
+      baseURL: `${BITCART_API_URL}/api`,
+      headers: { Authorization: `Bearer ${BITCART_API_TOKEN}` },
+      timeout: 25000,
+    })
+  : null;
+
+function bitcartCheckoutUrl(invoiceId) {
+  return BITCART_CHECKOUT_URL_TEMPLATE.replace('{id}', encodeURIComponent(invoiceId));
+}
+
+async function bitcartCreateInvoice({ amount, orderId, email, description }) {
+  if (!bitcart) throw new Error('Bitcart is not configured.');
+  const payload = {
+    price: Number(amount),
+    currency: PRICE_CURRENCY.toUpperCase(),
+    store_id: BITCART_STORE_ID,
+    order_id: orderId,
+    notification_url: `${BASE_URL}/api/webhook/bitcart`,
+    redirect_url: `${FRONTEND_URL}/success.html?order_id=${encodeURIComponent(orderId)}`,
+    buyer_email: email || undefined,
+    products: description ? [{ name: description.slice(0, 120), quantity: 1, price: Number(amount) }] : undefined,
+    metadata: { source: COMPANY_NAME, orderId },
+  };
+  const { data } = await bitcart.post('/invoices', payload);
+  return data;
+}
+
+// Map Bitcart invoice statuses to our unified order statuses.
+function mapBitcartStatus(s) {
+  switch (String(s || '').toLowerCase()) {
+    case 'complete':
+    case 'completed':
+    case 'paid':
+    case 'confirmed':
+      return 'completed';
+    case 'expired':
+    case 'invalid':
+    case 'failed':
+      return 'failed';
+    case 'pending':
+    case 'processing':
+    case 'confirming':
+      return 'confirming';
+    case 'new':
+    default:
+      return 'waiting';
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
 app.get('/api/health', async (_req, res) => {
@@ -275,6 +359,30 @@ app.get('/api/health', async (_req, res) => {
   } catch (e) {
     res.status(503).json({ status: 'DEGRADED', error: e.message });
   }
+});
+
+/**
+ * Public config — tells the frontend which payment methods + coins are wired up.
+ * Safe to expose: contains no API keys or secrets.
+ */
+app.get('/api/config', (_req, res) => {
+  const wallets = {};
+  for (const [k, v] of Object.entries(PAYOUT_WALLETS)) {
+    if (v) wallets[k] = v;
+  }
+  res.json({
+    company: COMPANY_NAME,
+    priceCurrency: PRICE_CURRENCY.toUpperCase(),
+    methods: {
+      hosted: true,                                  // NOWPayments
+      direct: Boolean(PAYOUT_WALLETS.USDTTRC20),     // On-chain USDT TRC-20
+      bitcart: BITCART_ENABLED,                      // Self-hosted Bitcart
+    },
+    wallets,
+    bitcart: BITCART_ENABLED ? {
+      checkoutUrlTemplate: BITCART_CHECKOUT_URL_TEMPLATE,
+    } : null,
+  });
 });
 
 /**
@@ -469,6 +577,140 @@ app.post('/api/direct-invoice/:orderId/submit-tx', async (req, res) => {
 });
 
 /**
+ * Create a Bitcart (self-hosted) invoice. Same shape as /api/invoice.
+ * Returns: { orderId, invoiceUrl }
+ */
+app.post('/api/bitcart-invoice', async (req, res) => {
+  if (!BITCART_ENABLED) {
+    return res.status(503).json({ success: false, error: 'Self-hosted Bitcart is not configured on this server.' });
+  }
+  try {
+    const amount = Number(req.body?.amount);
+    const email = (req.body?.email || '').toString().trim() || undefined;
+    const description = (req.body?.description || '').toString().slice(0, 200) || undefined;
+
+    if (!Number.isFinite(amount) || amount < 1) {
+      return res.status(400).json({ success: false, error: 'Minimum amount is 1.00.' });
+    }
+    if (amount > 1_000_000) {
+      return res.status(400).json({ success: false, error: 'Amount too large.' });
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ success: false, error: 'Invalid email.' });
+    }
+
+    const orderId = `POB-${Date.now()}-${uuidv4().slice(0, 8).toUpperCase()}`;
+    const invoice = await bitcartCreateInvoice({ amount, orderId, email, description });
+
+    const invoiceId = invoice.id || invoice.invoice_id;
+    if (!invoiceId) throw new Error('Bitcart did not return an invoice id.');
+    const invoiceUrl = bitcartCheckoutUrl(invoiceId);
+
+    const order = {
+      orderId,
+      method: 'bitcart',
+      amount,
+      currency: PRICE_CURRENCY.toUpperCase(),
+      email,
+      description,
+      bitcartInvoiceId: invoiceId,
+      invoiceUrl,
+      status: 'waiting',
+      createdAt: new Date().toISOString(),
+    };
+    orders.set(orderId, order);
+
+    console.log(`[${COMPANY_NAME}] Bitcart invoice created ${orderId} → ${invoiceUrl}`);
+
+    res.json({
+      success: true,
+      orderId,
+      amount,
+      currency: order.currency,
+      invoiceUrl,
+    });
+  } catch (err) {
+    const upstream = err.response?.data;
+    console.error('[bitcart-invoice] error:', upstream || err.message);
+    res.status(502).json({
+      success: false,
+      error: 'Could not create Bitcart invoice. Please try again.',
+      detail: typeof upstream === 'string' ? upstream : upstream?.detail || upstream?.message || undefined,
+    });
+  }
+});
+
+/**
+ * Bitcart webhook. Configure in Bitcart admin → Store → Webhooks:
+ *   URL:    {BASE_URL}/api/webhook/bitcart
+ *   Secret: BITCART_WEBHOOK_SECRET
+ * Bitcart sends an HMAC-SHA256 over the raw request body in `X-Bitcart-Sig`
+ * (older builds) or `Bitcart-Sig` / `bitcart-signature` headers. We accept any.
+ */
+app.post('/api/webhook/bitcart', async (req, res) => {
+  try {
+    if (!BITCART_ENABLED || !BITCART_WEBHOOK_SECRET) {
+      console.warn('[bitcart-webhook] rejected: not configured');
+      return res.status(400).json({ ok: false });
+    }
+    const raw = req.body; // Buffer (express.raw)
+    if (!raw?.length) return res.status(400).json({ ok: false, error: 'empty body' });
+
+    const sig = req.header('x-bitcart-sig')
+      || req.header('bitcart-sig')
+      || req.header('bitcart-signature')
+      || '';
+    const expected = crypto.createHmac('sha256', BITCART_WEBHOOK_SECRET)
+      .update(raw)
+      .digest('hex');
+
+    const sigHex = sig.replace(/^sha256=/i, '').toLowerCase();
+    const ok = sigHex.length === expected.length &&
+      crypto.timingSafeEqual(Buffer.from(sigHex, 'hex'), Buffer.from(expected, 'hex'));
+    if (!ok) {
+      console.warn('[bitcart-webhook] signature mismatch');
+      return res.status(401).json({ ok: false });
+    }
+
+    let parsed;
+    try { parsed = JSON.parse(raw.toString('utf8')); }
+    catch { return res.status(400).json({ ok: false, error: 'invalid json' }); }
+
+    // Bitcart sends { event: 'invoice_paid', data: { id, status, order_id, paid_currency, payments: [...] } }
+    // or sometimes a flat invoice payload — handle both.
+    const data = parsed.data || parsed;
+    const evt = parsed.event || data.event || data.status;
+    const orderId = data.order_id || data.metadata?.orderId;
+    if (!orderId) {
+      console.warn('[bitcart-webhook] no order_id in payload');
+      return res.json({ ok: true });
+    }
+
+    const order = orders.get(orderId);
+    if (!order) {
+      console.warn(`[bitcart-webhook] unknown order ${orderId}`);
+      return res.json({ ok: true });
+    }
+
+    order.status = mapBitcartStatus(data.status || evt);
+    order.bitcartInvoiceId = data.id || order.bitcartInvoiceId;
+    order.payCurrency = (data.paid_currency || data.currency || order.payCurrency || '').toString().toUpperCase();
+    if (Array.isArray(data.payments) && data.payments[0]) {
+      order.txHash = data.payments[0].tx_hash || data.payments[0].txid || order.txHash;
+      order.amountReceived = data.payments[0].amount || order.amountReceived;
+    }
+    order.updatedAt = new Date().toISOString();
+    orders.set(orderId, order);
+
+    console.log(`[bitcart-webhook] order ${orderId} → ${order.status} (${evt || data.status})`);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[bitcart-webhook] error:', e);
+    res.status(200).json({ ok: true }); // never make Bitcart retry on our bug
+  }
+});
+
+/**
  * Get status of an order. Falls back to NOWPayments if we haven't received an IPN yet.
  */
 app.get('/api/payment/status/:orderId', async (req, res) => {
@@ -498,6 +740,24 @@ app.get('/api/payment/status/:orderId', async (req, res) => {
       }
     } catch (e) {
       console.warn('[status] upstream lookup failed:', e.message);
+    }
+  }
+
+  // Same idea for Bitcart orders.
+  if (!FINAL.has(order.status) && order.method === 'bitcart' && order.bitcartInvoiceId && bitcart) {
+    try {
+      const { data } = await bitcart.get(`/invoices/${encodeURIComponent(order.bitcartInvoiceId)}`);
+      if (data) {
+        order.status = mapBitcartStatus(data.status);
+        if (Array.isArray(data.payments) && data.payments[0]) {
+          order.txHash = data.payments[0].tx_hash || data.payments[0].txid || order.txHash;
+          order.amountReceived = data.payments[0].amount || order.amountReceived;
+        }
+        order.payCurrency = (data.paid_currency || order.payCurrency || '').toString().toUpperCase();
+        orders.set(orderId, order);
+      }
+    } catch (e) {
+      console.warn('[status] bitcart lookup failed:', e.message);
     }
   }
 
@@ -632,7 +892,10 @@ app.listen(PORT, () => {
   console.log(`  Checkout page:  ${FRONTEND_URL}/pay.html`);
   console.log(`  Direct wallet:  ${USDT_TRC20_WALLET} (TRC-20)`);
   console.log(`  TronGrid key:   ${TRONGRID_API_KEY ? 'set' : 'unauthenticated (rate-limited)'}`);
-  console.log(`  IPN secret:     ${NOWPAYMENTS_IPN_SECRET ? 'set' : 'MISSING'}\n`);
+  console.log(`  IPN secret:     ${NOWPAYMENTS_IPN_SECRET ? 'set' : 'MISSING'}`);
+  console.log(`  Bitcart:        ${BITCART_ENABLED ? `enabled (${BITCART_API_URL})` : 'disabled (set BITCART_API_URL, BITCART_API_TOKEN, BITCART_STORE_ID, BITCART_WEBHOOK_SECRET to enable)'}`);
+  const wiredCoins = Object.entries(PAYOUT_WALLETS).filter(([, v]) => v).map(([k]) => k).join(', ');
+  console.log(`  Coins wired:    ${wiredCoins || '(none)'}\n`);
 });
 
 module.exports = app;

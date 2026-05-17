@@ -100,7 +100,7 @@
                     <p>Choose how you'd like to pay. Both options are settled in USDT.</p>
                 </div>
 
-                <div class="method-toggle" role="radiogroup" aria-label="Payment method">
+                <div class="method-toggle" role="radiogroup" aria-label="Payment method" id="methodToggle">
                     <label class="method-option selected" data-method="hosted">
                         <input type="radio" name="method" value="hosted" checked>
                         <span class="mt-title">Hosted checkout</span>
@@ -110,6 +110,11 @@
                         <input type="radio" name="method" value="direct">
                         <span class="mt-title">Pay direct (USDT)</span>
                         <span class="mt-sub">Send from your own wallet · TRC-20</span>
+                    </label>
+                    <label class="method-option" data-method="bitcart" id="methodBitcart" style="display:none;">
+                        <input type="radio" name="method" value="bitcart">
+                        <span class="mt-title">Self-hosted (Bitcart)</span>
+                        <span class="mt-sub">BTC · ETH · USDT · multiple coins</span>
                     </label>
                 </div>
 
@@ -153,6 +158,13 @@
                             <div class="d">We'll show you our TRC-20 wallet address and a QR code. After sending, paste your transaction hash and we'll verify it on-chain.</div>
                         </div>
                     </div>
+                    <div class="notice" id="bitcartNotice" style="display:none;">
+                        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.4 0 4.58.94 6.18 2.47"/><polyline points="21 3 21 9 15 9"/></svg></div>
+                        <div>
+                            <div class="t">Self-hosted Bitcart checkout</div>
+                            <div class="d">A non-custodial, no-KYC invoice. Pay with BTC, ETH, USDT, and other coins. Funds settle straight to our self-hosted wallets.</div>
+                        </div>
+                    </div>
 
                     <button type="submit" class="btn-pay" id="payButton">
                         <span class="label-default">
@@ -194,8 +206,9 @@
 
         // Method toggle
         const methodOptions = document.querySelectorAll('.method-option');
-        const hostedNotice = document.getElementById('hostedNotice');
-        const directNotice = document.getElementById('directNotice');
+        const hostedNotice  = document.getElementById('hostedNotice');
+        const directNotice  = document.getElementById('directNotice');
+        const bitcartNotice = document.getElementById('bitcartNotice');
         const payLabel = document.getElementById('payButtonLabel');
         const payLoadingLabel = document.getElementById('payButtonLoadingLabel');
 
@@ -206,19 +219,52 @@
                 const input = o.querySelector('input');
                 if (input) input.checked = sel;
             });
+            hostedNotice.style.display  = method === 'hosted'  ? '' : 'none';
+            directNotice.style.display  = method === 'direct'  ? '' : 'none';
+            bitcartNotice.style.display = method === 'bitcart' ? '' : 'none';
             if (method === 'direct') {
-                hostedNotice.style.display = 'none';
-                directNotice.style.display = '';
                 payLabel.textContent = 'Show Wallet & Instructions';
                 payLoadingLabel.textContent = 'Preparing your order…';
+            } else if (method === 'bitcart') {
+                payLabel.textContent = 'Continue to Bitcart Checkout';
+                payLoadingLabel.textContent = 'Creating Bitcart invoice…';
             } else {
-                hostedNotice.style.display = '';
-                directNotice.style.display = 'none';
                 payLabel.textContent = 'Continue to Secure Payment';
                 payLoadingLabel.textContent = 'Creating secure invoice…';
             }
         }
         methodOptions.forEach(o => o.addEventListener('click', () => selectMethod(o.dataset.method)));
+
+        // -------- Bootstrap from /api/config (reveal Bitcart if available)
+        // and apply payment-link query params (?amount=&description=&email=&method=).
+        (async function bootstrap() {
+            let cfg = { methods: { hosted: true, direct: true, bitcart: false } };
+            try {
+                const r = await fetch('/api/config');
+                if (r.ok) cfg = await r.json();
+            } catch { /* offline-friendly default */ }
+
+            if (cfg.methods?.bitcart) {
+                document.getElementById('methodBitcart').style.display = '';
+                document.getElementById('methodToggle').classList.add('cols-3');
+            }
+
+            const params = new URLSearchParams(window.location.search);
+            const qAmount = parseFloat(params.get('amount'));
+            const qDesc   = params.get('description') || params.get('desc');
+            const qEmail  = params.get('email');
+            const qMethod = params.get('method');
+            const qLock   = params.get('lock') === '1';
+
+            if (Number.isFinite(qAmount) && qAmount > 0) {
+                amountInput.value = qAmount.toFixed(2);
+                amountInput.dispatchEvent(new Event('input'));
+                if (qLock) amountInput.readOnly = true;
+            }
+            if (qDesc)  document.getElementById('description').value = qDesc;
+            if (qEmail) document.getElementById('email').value = qEmail;
+            if (qMethod && cfg.methods?.[qMethod]) selectMethod(qMethod);
+        })();
 
         const form = document.getElementById('paymentForm');
         const btn  = document.getElementById('payButton');
@@ -245,7 +291,9 @@
             btn.classList.add('loading');
             btn.disabled = true;
 
-            const endpoint = method === 'direct' ? '/api/direct-invoice' : '/api/invoice';
+            const endpoint = method === 'direct' ? '/api/direct-invoice'
+                            : method === 'bitcart' ? '/api/bitcart-invoice'
+                            : '/api/invoice';
 
             try {
                 const res = await fetch(endpoint, {

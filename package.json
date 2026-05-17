@@ -5,7 +5,8 @@
   "main": "server-clean.js",
   "scripts": {
     "start": "node server-clean.js",
-    "dev": "nodemon server-clean.js"
+    "dev": "nodemon server-clean.js",
+    "bootstrap-bitcart": "node scripts/bootstrap-bitcart.js"
   },
   "dependencies": {
     "express": "^4.18.2",

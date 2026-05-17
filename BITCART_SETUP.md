@@ -73,6 +73,32 @@ curl -I https://admin.pay.your-domain.com   # expect 200
 
 ## 3. Create wallets + a store + a webhook
 
+You have **two options**: a one-shot automated bootstrap (recommended) or
+clicking through the admin UI.
+
+### Option A — Automated bootstrap (recommended, ~30 seconds)
+
+1. Open `https://admin.pay.your-domain.com` and create the admin account.
+2. **Manage Tokens → New Token** with the `server_management` permission.
+   Copy the token immediately — Bitcart only shows it once.
+3. From this repo, run the bootstrap script. It creates the USDT TRC-20
+   wallet pointing at `TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh`, builds the store,
+   wires the signed webhook back to your Render API, and prints the env
+   vars you need:
+
+   ```bash
+   BITCART_API_URL=https://admin.pay.your-domain.com \
+   BITCART_BOOTSTRAP_TOKEN=<paste token from step 2> \
+   BASE_URL=https://poffbank-api.onrender.com \
+   npm run bootstrap-bitcart
+   ```
+
+   Add `BTC_WALLET=…`, `ETH_WALLET=…`, `USDT_POLYGON_WALLET=…` env vars
+   before running if you want those wallets provisioned too. The script is
+   **idempotent** — re-running it reuses anything that already exists.
+
+### Option B — Manual via the admin UI
+
 1. Open `https://admin.pay.your-domain.com` and create the admin account.
 2. **Wallets → New Wallet** for each coin. For each one paste the xpub /
    address / private key (your choice — Bitcart can also generate them).

@@ -604,7 +604,8 @@ app.post('/api/bitcart-invoice', async (req, res) => {
 
     const invoiceId = invoice.id || invoice.invoice_id;
     if (!invoiceId) throw new Error('Bitcart did not return an invoice id.');
-    const invoiceUrl = bitcartCheckoutUrl(invoiceId);
+    // Newer Bitcart returns `checkout_url` directly. Fall back to template.
+    const invoiceUrl = invoice.checkout_url || invoice.payment_url || bitcartCheckoutUrl(invoiceId);
 
     const order = {
       orderId,
@@ -656,7 +657,10 @@ app.post('/api/webhook/bitcart', async (req, res) => {
     const raw = req.body; // Buffer (express.raw)
     if (!raw?.length) return res.status(400).json({ ok: false, error: 'empty body' });
 
-    const sig = req.header('x-bitcart-sig')
+    // Bitcart >= ~0.7 sends `X-Signature`. Older builds used `bitcart-sig`.
+    // Accept any of the historical headers so this works across versions.
+    const sig = req.header('x-signature')
+      || req.header('x-bitcart-sig')
       || req.header('bitcart-sig')
       || req.header('bitcart-signature')
       || '';

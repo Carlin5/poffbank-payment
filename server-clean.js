@@ -60,6 +60,60 @@ const PAYOUT_WALLETS = {
 };
 
 // ---------------------------------------------------------------------------
+// Fiat → USDT card on-ramp (Transak primary, MoonPay optional)
+// ---------------------------------------------------------------------------
+// These providers accept the customer's card on their PCI-DSS compliant hosted
+// page, handle KYC where required, convert the fiat to USDT, and settle the
+// USDT on-chain directly to USDT_TRC20_WALLET. No card data ever touches this
+// server.
+//
+// Provider precedence (first one with a key set wins, unless ?provider= is
+// passed to /api/card-onramp):
+//
+//   1. transak  — https://transak.com (recommended; has STAGING for instant testing)
+//   2. moonpay  — https://www.moonpay.com (production-only, requires KYC)
+//
+// Set TRANSAK_API_KEY (and optionally TRANSAK_ENVIRONMENT=PRODUCTION) to enable.
+// Without any provider key, the card method is hidden in /api/config and the
+// /api/card-onramp endpoint returns HTTP 503.
+const TRANSAK_API_KEY = process.env.TRANSAK_API_KEY || '';
+const TRANSAK_ENVIRONMENT = (process.env.TRANSAK_ENVIRONMENT || 'STAGING').toUpperCase();
+const TRANSAK_WEBHOOK_SECRET = process.env.TRANSAK_WEBHOOK_SECRET || '';
+// Tron-network USDT product code used by Transak. They've used both "USDT" with
+// `network=tron` and the legacy `USDTTRC20`. We send both for compatibility.
+const TRANSAK_CRYPTO_CODE = (process.env.TRANSAK_CRYPTO_CODE || 'USDT').toUpperCase();
+const TRANSAK_NETWORK = (process.env.TRANSAK_NETWORK || 'tron').toLowerCase();
+const TRANSAK_ENABLED = Boolean(TRANSAK_API_KEY && USDT_TRC20_WALLET);
+
+const MOONPAY_API_KEY = process.env.MOONPAY_API_KEY || ''; // public/publishable key (pk_...)
+const MOONPAY_SECRET_KEY = process.env.MOONPAY_SECRET_KEY || ''; // for URL signing + webhook verify
+const MOONPAY_ENVIRONMENT = (process.env.MOONPAY_ENVIRONMENT || 'sandbox').toLowerCase();
+// MoonPay's product code for USDT on Tron mainnet.
+const MOONPAY_CURRENCY_CODE = (process.env.MOONPAY_CURRENCY_CODE || 'usdt_trx').toLowerCase();
+const MOONPAY_ENABLED = Boolean(MOONPAY_API_KEY && USDT_TRC20_WALLET);
+
+// Opt-in: route card payments through NOWPayments' hosted invoice, which
+// supports "Buy with card" via Simplex/Mercuryo. Off by default because it
+// requires three dashboard toggles in NOWPayments before it works (Payment
+// Methods, Payout Wallet, IPN Secret). Set CARD_ONRAMP_NOWPAYMENTS_FALLBACK=true
+// to enable this provider once the dashboard is set up. When off, the
+// `moonpay-public` fallback (no merchant config needed) is the default.
+const CARD_ONRAMP_NOWPAYMENTS_FALLBACK = String(process.env.CARD_ONRAMP_NOWPAYMENTS_FALLBACK || 'false').toLowerCase() === 'true';
+
+// Public MoonPay consumer URL fallback (no API key, no merchant account).
+// Customer goes through MoonPay's standard consumer KYC; USDT TRC-20 settles
+// straight to USDT_TRC20_WALLET. Disable with CARD_ONRAMP_MOONPAY_PUBLIC=false.
+const CARD_ONRAMP_MOONPAY_PUBLIC = String(process.env.CARD_ONRAMP_MOONPAY_PUBLIC || 'true').toLowerCase() !== 'false';
+
+const CARD_ONRAMP_ENABLED = TRANSAK_ENABLED || MOONPAY_ENABLED || CARD_ONRAMP_NOWPAYMENTS_FALLBACK || CARD_ONRAMP_MOONPAY_PUBLIC;
+const CARD_ONRAMP_DEFAULT_PROVIDER =
+  TRANSAK_ENABLED ? 'transak'
+  : MOONPAY_ENABLED ? 'moonpay'
+  : CARD_ONRAMP_NOWPAYMENTS_FALLBACK ? 'nowpayments-card'
+  : CARD_ONRAMP_MOONPAY_PUBLIC ? 'moonpay-public'
+  : null;
+
+// ---------------------------------------------------------------------------
 // Bitcart (self-hosted) settings — see BITCART_SETUP.md
 // ---------------------------------------------------------------------------
 // To enable the "Self-hosted (Bitcart)" payment method, set all four:
@@ -84,6 +138,9 @@ if (!NOWPAYMENTS_API_KEY) {
 if (!NOWPAYMENTS_IPN_SECRET) {
   console.warn('[WARN] NOWPAYMENTS_IPN_SECRET is not set — webhook signatures will be rejected.');
 }
+if (CARD_ONRAMP_ENABLED && TRANSAK_ENABLED && !TRANSAK_WEBHOOK_SECRET) {
+  console.warn('[WARN] TRANSAK_WEBHOOK_SECRET is not set — Transak webhook callbacks will be rejected.');
+}
 
 // ---------------------------------------------------------------------------
 // App
@@ -107,9 +164,16 @@ app.use(cors({
 // IMPORTANT: keep the raw body for webhook routes so we can verify HMAC.
 // We mount raw() ONLY on webhook paths, and json() on everything else,
 // to guarantee the buffer isn't consumed before signature verification.
-const RAW_BODY_PATHS = new Set(['/api/webhook/nowpayments', '/api/webhook/bitcart']);
+const RAW_BODY_PATHS = new Set([
+  '/api/webhook/nowpayments',
+  '/api/webhook/bitcart',
+  '/api/webhook/transak',
+  '/api/webhook/moonpay',
+]);
 app.use('/api/webhook/nowpayments', express.raw({ type: '*/*', limit: '1mb' }));
 app.use('/api/webhook/bitcart',     express.raw({ type: '*/*', limit: '1mb' }));
+app.use('/api/webhook/transak',     express.raw({ type: '*/*', limit: '1mb' }));
+app.use('/api/webhook/moonpay',     express.raw({ type: '*/*', limit: '1mb' }));
 app.use((req, res, next) => {
   if (RAW_BODY_PATHS.has(req.path)) return next();
   return express.json({ limit: '100kb' })(req, res, next);
@@ -350,6 +414,149 @@ function mapBitcartStatus(s) {
 }
 
 // ---------------------------------------------------------------------------
+// Card on-ramp helpers (Transak / MoonPay)
+// ---------------------------------------------------------------------------
+function encodeQuery(params) {
+  const u = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === '') continue;
+    u.append(k, String(v));
+  }
+  return u.toString();
+}
+
+/**
+ * Build the Transak hosted-checkout URL. Customer pays with card; Transak
+ * settles USDT (TRC-20) directly to USDT_TRC20_WALLET on-chain.
+ *
+ * Docs: https://docs.transak.com/docs/query-parameters
+ */
+function buildTransakUrl({ orderId, amount, email }) {
+  const host = TRANSAK_ENVIRONMENT === 'PRODUCTION'
+    ? 'https://global.transak.com'
+    : 'https://global-stg.transak.com';
+
+  let referrerDomain;
+  try { referrerDomain = new URL(FRONTEND_URL).host; } catch { referrerDomain = undefined; }
+
+  const query = encodeQuery({
+    apiKey: TRANSAK_API_KEY,
+    referrerDomain,
+    productsAvailed: 'BUY',
+    defaultPaymentMethod: 'credit_debit_card',
+    cryptoCurrencyCode: TRANSAK_CRYPTO_CODE,
+    network: TRANSAK_NETWORK,
+    walletAddress: USDT_TRC20_WALLET,
+    disableWalletAddressForm: 'true',
+    fiatCurrency: PRICE_CURRENCY.toUpperCase(),
+    fiatAmount: Number(amount).toFixed(2),
+    email: email || undefined,
+    partnerOrderId: orderId,
+    partnerCustomerId: orderId,
+    redirectURL: `${FRONTEND_URL}/success.html?order_id=${encodeURIComponent(orderId)}`,
+    hostURL: FRONTEND_URL,
+    themeColor: '102040',
+    hideMenu: 'true',
+  });
+
+  return `${host}/?${query}`;
+}
+
+// Reference: https://docs.transak.com/docs/order-status-references
+function mapTransakStatus(s) {
+  switch (String(s || '').toUpperCase()) {
+    case 'COMPLETED':
+      return 'completed';
+    case 'EXPIRED':
+    case 'FAILED':
+    case 'CANCELLED':
+    case 'REFUNDED':
+      return 'failed';
+    case 'PROCESSING':
+    case 'PENDING_DELIVERY_FROM_TRANSAK':
+    case 'ON_HOLD_PENDING_DELIVERY_FROM_TRANSAK':
+    case 'PAYMENT_DONE_MARKED_BY_USER':
+    case 'AWAITING_PAYMENT_FROM_USER':
+      return 'confirming';
+    default:
+      return 'waiting';
+  }
+}
+
+/**
+ * Build the MoonPay hosted-checkout URL. Signed when MOONPAY_SECRET_KEY is set
+ * (recommended for production; required if "URL signing" is enforced on the
+ * MoonPay dashboard).
+ *
+ * Docs: https://dev.moonpay.com/docs/ramps-sdk-buy-params
+ */
+function buildMoonpayUrl({ orderId, amount, email }) {
+  const host = MOONPAY_ENVIRONMENT === 'production'
+    ? 'https://buy.moonpay.com'
+    : 'https://buy-sandbox.moonpay.com';
+
+  const query = encodeQuery({
+    apiKey: MOONPAY_API_KEY,
+    currencyCode: MOONPAY_CURRENCY_CODE,
+    walletAddress: USDT_TRC20_WALLET,
+    baseCurrencyCode: PRICE_CURRENCY.toLowerCase(),
+    baseCurrencyAmount: Number(amount).toFixed(2),
+    email: email || undefined,
+    externalTransactionId: orderId,
+    externalCustomerId: orderId,
+    redirectURL: `${FRONTEND_URL}/success.html?order_id=${encodeURIComponent(orderId)}`,
+    showWalletAddressForm: 'false',
+    colorCode: '#102040',
+  });
+
+  const unsigned = `${host}?${query}`;
+  if (!MOONPAY_SECRET_KEY) return unsigned;
+
+  const signature = crypto
+    .createHmac('sha256', MOONPAY_SECRET_KEY)
+    .update(`?${query}`)
+    .digest('base64');
+  return `${unsigned}&signature=${encodeURIComponent(signature)}`;
+}
+
+function mapMoonpayStatus(s) {
+  switch (String(s || '').toLowerCase()) {
+    case 'completed':
+      return 'completed';
+    case 'failed':
+      return 'failed';
+    case 'pending':
+    case 'waitingauthorization':
+    case 'waitingpayment':
+      return 'confirming';
+    default:
+      return 'waiting';
+  }
+}
+
+/**
+ * Build a public MoonPay consumer-flow URL. No partner API key, no merchant
+ * account, no KYB. Customer completes MoonPay's own KYC; USDT TRC-20 settles
+ * directly to USDT_TRC20_WALLET on-chain. Status updates are best-effort
+ * (we have no webhook to attach), so order remains 'waiting' until the
+ * merchant manually verifies receipt on-chain or the customer submits a tx hash.
+ */
+function buildPublicMoonpayUrl({ orderId, amount, email }) {
+  const query = encodeQuery({
+    currencyCode: MOONPAY_CURRENCY_CODE,
+    walletAddress: USDT_TRC20_WALLET,
+    baseCurrencyCode: PRICE_CURRENCY.toLowerCase(),
+    baseCurrencyAmount: Number(amount).toFixed(2),
+    email: email || undefined,
+    externalTransactionId: orderId,
+    redirectURL: `${FRONTEND_URL}/success.html?order_id=${encodeURIComponent(orderId)}`,
+    showWalletAddressForm: 'false',
+    colorCode: '#102040',
+  });
+  return `https://buy.moonpay.com/?${query}`;
+}
+
+// ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
 app.get('/api/health', async (_req, res) => {
@@ -374,13 +581,24 @@ app.get('/api/config', (_req, res) => {
     company: COMPANY_NAME,
     priceCurrency: PRICE_CURRENCY.toUpperCase(),
     methods: {
-      hosted: true,                                  // NOWPayments
-      direct: Boolean(PAYOUT_WALLETS.USDTTRC20),     // On-chain USDT TRC-20
+      hosted: true,                                  // NOWPayments (crypto hosted invoice)
+      direct: Boolean(PAYOUT_WALLETS.USDTTRC20),     // On-chain USDT TRC-20 self-send
       bitcart: BITCART_ENABLED,                      // Self-hosted Bitcart
+      card: CARD_ONRAMP_ENABLED,                     // Card → USDT via Transak/MoonPay
     },
     wallets,
     bitcart: BITCART_ENABLED ? {
       checkoutUrlTemplate: BITCART_CHECKOUT_URL_TEMPLATE,
+    } : null,
+    card: CARD_ONRAMP_ENABLED ? {
+      provider: CARD_ONRAMP_DEFAULT_PROVIDER,
+      providers: {
+        transak: TRANSAK_ENABLED ? { environment: TRANSAK_ENVIRONMENT.toLowerCase(), kybRequired: true } : null,
+        moonpay: MOONPAY_ENABLED ? { environment: MOONPAY_ENVIRONMENT, kybRequired: true } : null,
+        'nowpayments-card': CARD_ONRAMP_NOWPAYMENTS_FALLBACK ? { kybRequired: false } : null,
+        'moonpay-public': CARD_ONRAMP_MOONPAY_PUBLIC ? { kybRequired: false } : null,
+      },
+      settles: 'USDT TRC-20',
     } : null,
   });
 });
@@ -577,6 +795,278 @@ app.post('/api/direct-invoice/:orderId/submit-tx', async (req, res) => {
 });
 
 /**
+ * Card → USDT on-ramp. Builds a hosted-checkout URL on Transak (or MoonPay,
+ * if explicitly requested via ?provider=moonpay) with USDT_TRC20_WALLET preset
+ * as the destination. The provider charges the customer's card, converts the
+ * fiat to USDT, and settles the USDT on-chain directly to our merchant wallet.
+ *
+ * Body: { amount: number, email?: string, description?: string, provider?: 'transak'|'moonpay' }
+ * Returns: { orderId, onrampUrl, provider }
+ */
+app.post('/api/card-onramp', async (req, res) => {
+  try {
+    if (!CARD_ONRAMP_ENABLED) {
+      return res.status(503).json({
+        success: false,
+        error: 'Card payments are not configured on this server yet. Set TRANSAK_API_KEY (or MOONPAY_API_KEY) in the environment.',
+      });
+    }
+
+    const amount = Number(req.body?.amount);
+    const email = (req.body?.email || '').toString().trim() || undefined;
+    const description = (req.body?.description || '').toString().slice(0, 200) || undefined;
+    const requested = String(req.body?.provider || '').toLowerCase();
+
+    if (!Number.isFinite(amount) || amount < 1) {
+      return res.status(400).json({ success: false, error: 'Minimum amount is 1.00 USD.' });
+    }
+    if (amount > 1_000_000) {
+      return res.status(400).json({ success: false, error: 'Amount too large.' });
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ success: false, error: 'Invalid email.' });
+    }
+
+    let provider = CARD_ONRAMP_DEFAULT_PROVIDER;
+    if (requested === 'transak' && TRANSAK_ENABLED) provider = 'transak';
+    else if (requested === 'moonpay' && MOONPAY_ENABLED) provider = 'moonpay';
+    else if (requested === 'nowpayments-card' && CARD_ONRAMP_NOWPAYMENTS_FALLBACK) provider = 'nowpayments-card';
+    else if (requested === 'moonpay-public' && CARD_ONRAMP_MOONPAY_PUBLIC) provider = 'moonpay-public';
+    else if (requested && requested !== provider) {
+      return res.status(400).json({
+        success: false,
+        error: `Card on-ramp provider "${requested}" is not configured on this server.`,
+      });
+    }
+
+    const orderId = `POB-${Date.now()}-${uuidv4().slice(0, 8).toUpperCase()}`;
+    let onrampUrl;
+    let providerEnv;
+    let invoiceId;
+    if (provider === 'transak') {
+      onrampUrl = buildTransakUrl({ orderId, amount, email });
+      providerEnv = TRANSAK_ENVIRONMENT.toLowerCase();
+    } else if (provider === 'moonpay') {
+      onrampUrl = buildMoonpayUrl({ orderId, amount, email });
+      providerEnv = MOONPAY_ENVIRONMENT;
+    } else if (provider === 'moonpay-public') {
+      onrampUrl = buildPublicMoonpayUrl({ orderId, amount, email });
+      providerEnv = 'public';
+    } else if (provider === 'nowpayments-card') {
+      // No-KYB fallback: create a NOWPayments hosted invoice. The customer sees
+      // a "Buy with card" button on the hosted page (Simplex/Mercuryo). USDT
+      // settles to the wallet configured in the merchant's NOWPayments dashboard.
+      const invoice = await npCreateInvoice({
+        amount,
+        orderId,
+        email,
+        description: description ? `${description} (card)` : `Card payment ${orderId}`,
+      });
+      onrampUrl = invoice.invoice_url;
+      invoiceId = invoice.id;
+      providerEnv = 'live';
+    }
+    if (!onrampUrl) {
+      return res.status(503).json({ success: false, error: 'Card on-ramp is not available right now.' });
+    }
+
+    const order = {
+      orderId,
+      method: 'card',
+      provider,
+      providerEnv,
+      amount,
+      currency: PRICE_CURRENCY.toUpperCase(),
+      payCurrency: 'USDTTRC20',
+      email,
+      description,
+      wallet: USDT_TRC20_WALLET,
+      network: 'TRC20',
+      contract: USDT_TRC20_CONTRACT,
+      onrampUrl,
+      invoiceId,
+      // For NOWPayments fallback, status will be updated by /api/webhook/nowpayments
+      // (which already handles the IPN signed payload). For moonpay-public, no
+      // webhook is possible — the order stays 'waiting' and the customer is
+      // expected to land back on /success.html for receipt.
+      status: 'waiting',
+      createdAt: new Date().toISOString(),
+    };
+    orders.set(orderId, order);
+
+    console.log(`[${COMPANY_NAME}] Card on-ramp order created ${orderId} via ${provider} (${providerEnv}) for ${amount} ${order.currency}`);
+
+    res.json({
+      success: true,
+      orderId,
+      provider,
+      providerEnv,
+      amount,
+      currency: order.currency,
+      onrampUrl,
+      settlement: { wallet: USDT_TRC20_WALLET, network: 'TRC20', asset: 'USDT' },
+    });
+  } catch (err) {
+    const upstream = err.response?.data;
+    console.error('[card-onramp] error:', upstream || err.message);
+    res.status(502).json({
+      success: false,
+      error: 'Could not create card on-ramp session. Please try again.',
+      detail: typeof upstream === 'string' ? upstream : upstream?.message || undefined,
+    });
+  }
+});
+
+/**
+ * Transak webhook (Order Processor v2).
+ * Configure in Transak dashboard → Webhooks → URL:
+ *   {BASE_URL}/api/webhook/transak
+ *
+ * Signature: Transak signs the JWT-encoded payload with the partner's API
+ * secret (TRANSAK_WEBHOOK_SECRET). The body is `{ data: "<jwt>" }`.
+ * We verify the HMAC-SHA256 of the JWT signing input against the third
+ * segment to ensure authenticity, then decode the payload.
+ */
+app.post('/api/webhook/transak', (req, res) => {
+  try {
+    if (!TRANSAK_ENABLED || !TRANSAK_WEBHOOK_SECRET) {
+      console.warn('[transak-webhook] rejected: not configured');
+      return res.status(400).json({ ok: false });
+    }
+    const raw = req.body; // Buffer (express.raw)
+    if (!raw?.length) return res.status(400).json({ ok: false, error: 'empty body' });
+
+    let parsed;
+    try { parsed = JSON.parse(raw.toString('utf8')); }
+    catch { return res.status(400).json({ ok: false, error: 'invalid json' }); }
+
+    // Transak wraps the payload as a JWS: `{ data: "<header>.<payload>.<sig>" }`.
+    // Older builds sent the order JSON directly with an X-Webhook-Signature header.
+    let order, eventID;
+    if (typeof parsed.data === 'string' && parsed.data.split('.').length === 3) {
+      const [h, p, s] = parsed.data.split('.');
+      const expected = crypto
+        .createHmac('sha256', TRANSAK_WEBHOOK_SECRET)
+        .update(`${h}.${p}`)
+        .digest('base64')
+        .replace(/=+$/g, '')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_');
+      if (expected !== s) {
+        console.warn('[transak-webhook] JWT signature mismatch');
+        return res.status(401).json({ ok: false });
+      }
+      try {
+        const decoded = JSON.parse(Buffer.from(p.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+        order = decoded.webhookData || decoded.data || decoded;
+        eventID = decoded.eventID || decoded.event || decoded.status;
+      } catch {
+        return res.status(400).json({ ok: false, error: 'invalid jwt payload' });
+      }
+    } else {
+      // Legacy header-based signature (HMAC-SHA256 of raw body).
+      const sig = (req.header('x-webhook-signature') || req.header('x-transak-signature') || '').toLowerCase();
+      const expected = crypto.createHmac('sha256', TRANSAK_WEBHOOK_SECRET).update(raw).digest('hex');
+      const sigHex = sig.replace(/^sha256=/i, '');
+      const ok = sigHex.length === expected.length &&
+        crypto.timingSafeEqual(Buffer.from(sigHex, 'hex'), Buffer.from(expected, 'hex'));
+      if (!ok) {
+        console.warn('[transak-webhook] header signature mismatch');
+        return res.status(401).json({ ok: false });
+      }
+      order = parsed.webhookData || parsed.data || parsed;
+      eventID = parsed.eventID || parsed.event || order?.status;
+    }
+
+    const orderId = order?.partnerOrderId || order?.partnerCustomerId;
+    if (!orderId) {
+      console.warn('[transak-webhook] no partnerOrderId in payload');
+      return res.json({ ok: true });
+    }
+    const ours = orders.get(orderId);
+    if (!ours) {
+      console.warn(`[transak-webhook] unknown order ${orderId}`);
+      return res.json({ ok: true });
+    }
+
+    ours.status = mapTransakStatus(order.status || eventID);
+    ours.providerOrderId = order.id || ours.providerOrderId;
+    ours.txHash = order.transactionHash || order.cryptoTransactionHash || ours.txHash;
+    ours.usdtReceived = order.cryptoAmount || ours.usdtReceived;
+    ours.amountReceived = order.fiatAmount || ours.amountReceived;
+    ours.payCurrency = (order.cryptoCurrency || ours.payCurrency || '').toString().toUpperCase();
+    ours.updatedAt = new Date().toISOString();
+    orders.set(orderId, ours);
+
+    console.log(`[transak-webhook] order ${orderId} → ${ours.status} (${eventID || order.status})`);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[transak-webhook] error:', e);
+    res.status(200).json({ ok: true }); // never make Transak retry on our bug
+  }
+});
+
+/**
+ * MoonPay webhook. Signature header: `Moonpay-Signature-V2: t=<ts>,s=<sig>`.
+ * Sig = HMAC-SHA256(`${t}.${rawBody}`, MOONPAY_SECRET_KEY) hex-encoded.
+ */
+app.post('/api/webhook/moonpay', (req, res) => {
+  try {
+    if (!MOONPAY_ENABLED || !MOONPAY_SECRET_KEY) {
+      console.warn('[moonpay-webhook] rejected: not configured');
+      return res.status(400).json({ ok: false });
+    }
+    const raw = req.body;
+    if (!raw?.length) return res.status(400).json({ ok: false, error: 'empty body' });
+
+    const header = req.header('moonpay-signature-v2') || req.header('moonpay-signature') || '';
+    const parts = Object.fromEntries(header.split(',').map(p => p.split('=').map(x => x.trim())));
+    const t = parts.t;
+    const s = (parts.s || '').toLowerCase();
+    if (!t || !s) {
+      console.warn('[moonpay-webhook] missing signature header');
+      return res.status(401).json({ ok: false });
+    }
+    const expected = crypto.createHmac('sha256', MOONPAY_SECRET_KEY)
+      .update(`${t}.${raw.toString('utf8')}`)
+      .digest('hex');
+    const ok = expected.length === s.length &&
+      crypto.timingSafeEqual(Buffer.from(s, 'hex'), Buffer.from(expected, 'hex'));
+    if (!ok) {
+      console.warn('[moonpay-webhook] signature mismatch');
+      return res.status(401).json({ ok: false });
+    }
+
+    let parsed;
+    try { parsed = JSON.parse(raw.toString('utf8')); }
+    catch { return res.status(400).json({ ok: false, error: 'invalid json' }); }
+
+    const data = parsed.data || parsed;
+    const orderId = data.externalTransactionId || data.externalCustomerId;
+    if (!orderId) {
+      console.warn('[moonpay-webhook] no externalTransactionId');
+      return res.json({ ok: true });
+    }
+    const ours = orders.get(orderId);
+    if (!ours) return res.json({ ok: true });
+
+    ours.status = mapMoonpayStatus(data.status);
+    ours.providerOrderId = data.id || ours.providerOrderId;
+    ours.txHash = data.cryptoTransactionId || ours.txHash;
+    ours.usdtReceived = data.quoteCurrencyAmount || ours.usdtReceived;
+    ours.amountReceived = data.baseCurrencyAmount || ours.amountReceived;
+    ours.updatedAt = new Date().toISOString();
+    orders.set(orderId, ours);
+
+    console.log(`[moonpay-webhook] order ${orderId} → ${ours.status} (${data.status})`);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[moonpay-webhook] error:', e);
+    res.status(200).json({ ok: true });
+  }
+});
+
+/**
  * Create a Bitcart (self-hosted) invoice. Same shape as /api/invoice.
  * Returns: { orderId, invoiceUrl }
  */
@@ -722,10 +1212,12 @@ app.get('/api/payment/status/:orderId', async (req, res) => {
   const order = orders.get(orderId);
   if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
 
-  // If not finalised, ask NOWPayments directly (only for hosted-invoice orders
-  // — direct-to-wallet orders have no invoiceId and shouldn't be polled there).
+  // If not finalised, ask NOWPayments directly for any order that has an
+  // invoiceId. This covers both 'hosted' orders and 'card' orders routed
+  // through the no-KYB NOWPayments fallback. Direct-to-wallet orders have
+  // no invoiceId and shouldn't be polled there.
   const FINAL = new Set(['completed', 'failed']);
-  if (!FINAL.has(order.status) && order.method === 'hosted' && order.invoiceId) {
+  if (!FINAL.has(order.status) && (order.method === 'hosted' || order.method === 'card') && order.invoiceId) {
     try {
       let latest = null;
       if (order.lastPaymentId) {
@@ -769,6 +1261,7 @@ app.get('/api/payment/status/:orderId', async (req, res) => {
     success: true,
     orderId,
     method: order.method || 'hosted',
+    provider: order.provider,
     status: order.status,
     amount: order.amount,
     currency: order.currency,
@@ -777,6 +1270,7 @@ app.get('/api/payment/status/:orderId', async (req, res) => {
     usdtReceived: order.usdtReceived,
     txHash: order.txHash,
     invoiceUrl: order.invoiceUrl,
+    onrampUrl: order.onrampUrl,
     wallet: order.wallet,
     network: order.network,
     failureReason: order.failureReason,
@@ -898,6 +1392,24 @@ app.listen(PORT, () => {
   console.log(`  TronGrid key:   ${TRONGRID_API_KEY ? 'set' : 'unauthenticated (rate-limited)'}`);
   console.log(`  IPN secret:     ${NOWPAYMENTS_IPN_SECRET ? 'set' : 'MISSING'}`);
   console.log(`  Bitcart:        ${BITCART_ENABLED ? `enabled (${BITCART_API_URL})` : 'disabled (set BITCART_API_URL, BITCART_API_TOKEN, BITCART_STORE_ID, BITCART_WEBHOOK_SECRET to enable)'}`);
+  if (CARD_ONRAMP_ENABLED) {
+    const providers = [];
+    if (TRANSAK_ENABLED) providers.push(`transak:${TRANSAK_ENVIRONMENT.toLowerCase()}`);
+    if (MOONPAY_ENABLED) providers.push(`moonpay:${MOONPAY_ENVIRONMENT}`);
+    if (CARD_ONRAMP_NOWPAYMENTS_FALLBACK) providers.push('nowpayments-card (no-KYB)');
+    if (CARD_ONRAMP_MOONPAY_PUBLIC) providers.push('moonpay-public (no-KYB)');
+    console.log(`  Card on-ramp:   enabled → ${providers.join(', ')}`);
+    console.log(`  Default route:  ${CARD_ONRAMP_DEFAULT_PROVIDER}`);
+    console.log(`  Card endpoint:  POST ${BASE_URL}/api/card-onramp  →  ${USDT_TRC20_WALLET} (TRC-20)`);
+    if (TRANSAK_ENABLED) {
+      console.log(`  Transak webhook:${BASE_URL}/api/webhook/transak ${TRANSAK_WEBHOOK_SECRET ? '(secret set)' : '(MISSING TRANSAK_WEBHOOK_SECRET)'}`);
+    }
+    if (MOONPAY_ENABLED) {
+      console.log(`  MoonPay webhook:${BASE_URL}/api/webhook/moonpay ${MOONPAY_SECRET_KEY ? '(secret set)' : '(MISSING MOONPAY_SECRET_KEY)'}`);
+    }
+  } else {
+    console.log(`  Card on-ramp:   disabled`);
+  }
   const wiredCoins = Object.entries(PAYOUT_WALLETS).filter(([, v]) => v).map(([k]) => k).join(', ');
   console.log(`  Coins wired:    ${wiredCoins || '(none)'}\n`);
 });

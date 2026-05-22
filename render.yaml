@@ -37,3 +37,24 @@ services:
         sync: false
       - key: NOWPAYMENTS_IPN_SECRET
         sync: false
+
+      # USDT TRC-20 merchant wallet — the destination for ALL card → USDT
+      # payments (and for the direct-USDT method). Settle straight on-chain.
+      - key: USDT_TRC20_WALLET
+        value: TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh
+
+      # Card → USDT on-ramp keys. By default the gateway uses the no-KYB
+      # NOWPayments + MoonPay-public fallbacks (no extra config needed).
+      # Fill these only after you pass partner KYB and want branded checkout.
+      - key: TRANSAK_API_KEY
+        sync: false
+      - key: TRANSAK_ENVIRONMENT
+        value: STAGING
+      - key: TRANSAK_WEBHOOK_SECRET
+        sync: false
+      - key: MOONPAY_API_KEY
+        sync: false
+      - key: MOONPAY_SECRET_KEY
+        sync: false
+      - key: MOONPAY_ENVIRONMENT
+        value: sandbox

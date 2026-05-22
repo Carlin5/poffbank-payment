@@ -101,10 +101,15 @@
                 </div>
 
                 <div class="method-toggle" role="radiogroup" aria-label="Payment method" id="methodToggle">
+                    <label class="method-option" data-method="card" id="methodCard" style="display:none;">
+                        <input type="radio" name="method" value="card">
+                        <span class="mt-title">Pay with card</span>
+                        <span class="mt-sub">Visa · Mastercard · settled in USDT</span>
+                    </label>
                     <label class="method-option selected" data-method="hosted">
                         <input type="radio" name="method" value="hosted" checked>
-                        <span class="mt-title">Hosted checkout</span>
-                        <span class="mt-sub">Card or crypto · secure processor</span>
+                        <span class="mt-title">Pay with crypto</span>
+                        <span class="mt-sub">USDT, BTC, ETH … hosted checkout</span>
                     </label>
                     <label class="method-option" data-method="direct">
                         <input type="radio" name="method" value="direct">
@@ -144,11 +149,18 @@
                         </div>
                     </div>
 
+                    <div class="notice" id="cardNotice" style="display:none;">
+                        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
+                        <div>
+                            <div class="t">Pay with credit or debit card</div>
+                            <div class="d">You'll be redirected to our PCI-DSS payment processor (<span id="cardProviderName">payment provider</span>). Enter your card there — the processor handles all card data and identity verification. Your payment is converted to USDT and settled on-chain directly to PoffBank's USDT (TRC&#8209;20) wallet within minutes.</div>
+                        </div>
+                    </div>
                     <div class="notice" id="hostedNotice">
                         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
                         <div>
-                            <div class="t">Hosted secure checkout</div>
-                            <div class="d">Card details (if used) are entered on the processor's PCI-DSS page — they never touch PoffBank servers.</div>
+                            <div class="t">Pay with crypto (USDT, BTC, ETH …)</div>
+                            <div class="d">Send from any crypto wallet. Settlement to PoffBank in USDT (TRC&#8209;20) is automatic.</div>
                         </div>
                     </div>
                     <div class="notice" id="directNotice" style="display:none;">
@@ -206,6 +218,7 @@
 
         // Method toggle
         const methodOptions = document.querySelectorAll('.method-option');
+        const cardNotice    = document.getElementById('cardNotice');
         const hostedNotice  = document.getElementById('hostedNotice');
         const directNotice  = document.getElementById('directNotice');
         const bitcartNotice = document.getElementById('bitcartNotice');
@@ -219,10 +232,14 @@
                 const input = o.querySelector('input');
                 if (input) input.checked = sel;
             });
+            cardNotice.style.display    = method === 'card'    ? '' : 'none';
             hostedNotice.style.display  = method === 'hosted'  ? '' : 'none';
             directNotice.style.display  = method === 'direct'  ? '' : 'none';
             bitcartNotice.style.display = method === 'bitcart' ? '' : 'none';
-            if (method === 'direct') {
+            if (method === 'card') {
+                payLabel.textContent = 'Continue to Card Payment';
+                payLoadingLabel.textContent = 'Preparing card checkout…';
+            } else if (method === 'direct') {
                 payLabel.textContent = 'Show Wallet & Instructions';
                 payLoadingLabel.textContent = 'Preparing your order…';
             } else if (method === 'bitcart') {
@@ -235,19 +252,44 @@
         }
         methodOptions.forEach(o => o.addEventListener('click', () => selectMethod(o.dataset.method)));
 
-        // -------- Bootstrap from /api/config (reveal Bitcart if available)
+        // -------- Bootstrap from /api/config (reveal Bitcart/Card if available)
         // and apply payment-link query params (?amount=&description=&email=&method=).
+        let serverCardProvider = null; // primary card-onramp provider id (e.g. 'nowpayments-card')
+
+        function providerHumanName(p) {
+            switch (p) {
+                case 'transak':           return 'Transak';
+                case 'moonpay':           return 'MoonPay';
+                case 'moonpay-public':    return 'MoonPay';
+                case 'nowpayments-card':  return 'NOWPayments (powered by Simplex / Mercuryo)';
+                default:                  return 'our PCI-DSS card processor';
+            }
+        }
+
         (async function bootstrap() {
-            let cfg = { methods: { hosted: true, direct: true, bitcart: false } };
+            let cfg = { methods: { hosted: true, direct: true, bitcart: false, card: false } };
             try {
                 const r = await fetch('/api/config');
                 if (r.ok) cfg = await r.json();
             } catch { /* offline-friendly default */ }
 
+            const toggle = document.getElementById('methodToggle');
+            let visible = 2; // hosted + direct always visible
+            if (cfg.methods?.card) {
+                document.getElementById('methodCard').style.display = '';
+                visible++;
+                serverCardProvider = cfg.card?.provider || null;
+                const lbl = document.getElementById('cardProviderName');
+                if (lbl) lbl.textContent = providerHumanName(serverCardProvider);
+                // Card is the most consumer-friendly default — select it on first paint.
+                selectMethod('card');
+            }
             if (cfg.methods?.bitcart) {
                 document.getElementById('methodBitcart').style.display = '';
-                document.getElementById('methodToggle').classList.add('cols-3');
+                visible++;
             }
+            if (visible >= 4) toggle.classList.add('cols-4');
+            else if (visible === 3) toggle.classList.add('cols-3');
 
             const params = new URLSearchParams(window.location.search);
             const qAmount = parseFloat(params.get('amount'));
@@ -291,8 +333,9 @@
             btn.classList.add('loading');
             btn.disabled = true;
 
-            const endpoint = method === 'direct' ? '/api/direct-invoice'
+            const endpoint = method === 'direct'  ? '/api/direct-invoice'
                             : method === 'bitcart' ? '/api/bitcart-invoice'
+                            : method === 'card'    ? '/api/card-onramp'
                             : '/api/invoice';
 
             try {
@@ -313,6 +356,9 @@
 
                 if (method === 'direct') {
                     window.location.href = '/pay-direct.html?order_id=' + encodeURIComponent(data.orderId);
+                } else if (method === 'card') {
+                    if (!data.onrampUrl) throw new Error('No card on-ramp URL returned.');
+                    window.location.href = data.onrampUrl;
                 } else {
                     if (!data.invoiceUrl) throw new Error('No invoice URL returned.');
                     window.location.href = data.invoiceUrl;

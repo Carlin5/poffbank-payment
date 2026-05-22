@@ -81,19 +81,9 @@ Navigate to: `http://localhost:3000`
 5. **Backend** confirms payment and generates receipt
 6. **Customer** sees success modal with PoffBank receipt
 
-## NOWPayments Setup (no merchant KYB required)
+## Card → USDT setup
 
-NOWPayments is the simplest no-KYB processor. You only need:
-
-1. A NOWPayments account (email verification only — no business KYB).
-2. **Payment Settings → set USDT-TRC20 payout wallet** to `TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh`.
-3. **Store Settings → IPN Secret Key** → generate one and copy it into `NOWPAYMENTS_IPN_SECRET` in your environment (Render dashboard or `.env`). This is **required** for signed webhook callbacks — without it, status updates from NOWPayments will be rejected.
-4. **Store Settings → Payment Methods → enable "Buy crypto with card (Simplex / Mercuryo)"**. This is what lets customers click the "Pay with card" option on the hosted invoice page. Card data + customer KYC are handled by Simplex / Mercuryo — *not* by NOWPayments and *not* by you.
-5. Webhook URL to paste in NOWPayments: `https://<your-domain>/api/webhook/nowpayments`
-
-Once enabled, the **"Pay with card"** button on `/pay.html` will create a NOWPayments invoice with the card-payment option exposed, and USDT TRC-20 will settle directly to the wallet you set in step 2.
-
-## Card → USDT setup (full picture)
+**Out of the box, no configuration needed.** The "Pay with card" button on `/pay.html` redirects the customer to MoonPay's public consumer flow (`moonpay-public`). The customer completes MoonPay's own KYC and pays by card; USDT TRC-20 settles directly to your wallet `TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh`. No merchant account, no API key, no dashboard toggles.
 
 The gateway picks the first available card-onramp provider in this order:
 
@@ -101,10 +91,20 @@ The gateway picks the first available card-onramp provider in this order:
 |---|-------------------|---------------------|------------------------------------------------------------------------------------------------------------------------------|
 | 1 | `transak`         | **Yes**             | Sign up at https://transak.com → pass KYB → put `TRANSAK_API_KEY` + `TRANSAK_WEBHOOK_SECRET` in env. Branded, signed flow.   |
 | 2 | `moonpay`         | **Yes**             | Sign up at https://www.moonpay.com → pass KYB → put `MOONPAY_API_KEY` + `MOONPAY_SECRET_KEY` in env. Branded, signed flow.   |
-| 3 | `nowpayments-card`| **No**              | See "NOWPayments Setup" above. Default fallback when no partner key is set.                                                  |
-| 4 | `moonpay-public`  | **No**              | Last-resort fallback that links to MoonPay's public consumer URL with your USDT TRC-20 wallet preset as destination.         |
+| 3 | `moonpay-public`  | **No**              | **Default.** Links to MoonPay's public consumer URL with your USDT TRC-20 wallet preset. Works out of the box.               |
+| 4 | `nowpayments-card`| **No**              | Opt-in (`CARD_ONRAMP_NOWPAYMENTS_FALLBACK=true`). See "NOWPayments Card Setup" below.                                        |
 
 In every case, the destination is your USDT TRC-20 wallet (`USDT_TRC20_WALLET`, defaults to `TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh`). Card data never touches this server.
+
+### NOWPayments Card Setup (optional upgrade)
+
+If you want to switch from `moonpay-public` to `nowpayments-card` (Simplex / Mercuryo branded flow with slightly better region coverage), do these steps:
+
+1. Set `CARD_ONRAMP_NOWPAYMENTS_FALLBACK=true` in your environment.
+2. **NOWPayments → Store Settings → Payment Methods** → enable "Buy crypto with card (Simplex / Mercuryo)".
+3. **NOWPayments → Payment Settings** → set USDT-TRC20 payout wallet to `TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh`.
+4. **NOWPayments → Store Settings → IPN Secret Key** → generate one and set `NOWPAYMENTS_IPN_SECRET` in your env.
+5. **NOWPayments → Store Settings → IPN Callback URL** → `https://<your-domain>/api/webhook/nowpayments`.
 
 ## Production Deployment
 

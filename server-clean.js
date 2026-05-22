@@ -92,14 +92,13 @@ const MOONPAY_ENVIRONMENT = (process.env.MOONPAY_ENVIRONMENT || 'sandbox').toLow
 const MOONPAY_CURRENCY_CODE = (process.env.MOONPAY_CURRENCY_CODE || 'usdt_trx').toLowerCase();
 const MOONPAY_ENABLED = Boolean(MOONPAY_API_KEY && USDT_TRC20_WALLET);
 
-// No-KYB fallback: route card payments through NOWPayments' hosted invoice,
-// which already supports "Buy with card" via Simplex/Mercuryo. The merchant
-// only needs a basic NOWPayments account (no KYB). Customer-side KYC is
-// handled by Simplex/Mercuryo, not the merchant.
-//
-// To disable this fallback (e.g. if you only want to expose the card method
-// when a partner key is set), set CARD_ONRAMP_NOWPAYMENTS_FALLBACK=false.
-const CARD_ONRAMP_NOWPAYMENTS_FALLBACK = String(process.env.CARD_ONRAMP_NOWPAYMENTS_FALLBACK || 'true').toLowerCase() !== 'false';
+// Opt-in: route card payments through NOWPayments' hosted invoice, which
+// supports "Buy with card" via Simplex/Mercuryo. Off by default because it
+// requires three dashboard toggles in NOWPayments before it works (Payment
+// Methods, Payout Wallet, IPN Secret). Set CARD_ONRAMP_NOWPAYMENTS_FALLBACK=true
+// to enable this provider once the dashboard is set up. When off, the
+// `moonpay-public` fallback (no merchant config needed) is the default.
+const CARD_ONRAMP_NOWPAYMENTS_FALLBACK = String(process.env.CARD_ONRAMP_NOWPAYMENTS_FALLBACK || 'false').toLowerCase() === 'true';
 
 // Public MoonPay consumer URL fallback (no API key, no merchant account).
 // Customer goes through MoonPay's standard consumer KYC; USDT TRC-20 settles

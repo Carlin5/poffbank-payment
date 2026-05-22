@@ -153,8 +153,12 @@
                         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
                         <div>
                             <div class="t">Pay with credit or debit card</div>
-                            <div class="d">You'll be redirected to our PCI-DSS payment processor (<span id="cardProviderName">payment provider</span>). Enter your card there — the processor handles all card data and identity verification. Your payment is converted to USDT and settled on-chain directly to PoffBank's USDT (TRC&#8209;20) wallet within minutes.</div>
+                            <div class="d">Pick your preferred processor below. Each one handles card data + identity verification themselves — nothing card-related touches PoffBank. Your payment is converted to USDT and settled on-chain to PoffBank's USDT (TRC&#8209;20) wallet within minutes. <strong>If one says "not supported in your region", just come back and try another.</strong></div>
                         </div>
+                    </div>
+
+                    <div class="provider-chooser" id="cardProviderChooser" role="radiogroup" aria-label="Card processor" style="display:none;">
+                        <!-- Tiles populated from /api/config -->
                     </div>
                     <div class="notice" id="hostedNotice">
                         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
@@ -233,6 +237,8 @@
                 if (input) input.checked = sel;
             });
             cardNotice.style.display    = method === 'card'    ? '' : 'none';
+            const chooser = document.getElementById('cardProviderChooser');
+            if (chooser) chooser.style.display = (method === 'card' && availableCardProviders.length > 0) ? '' : 'none';
             hostedNotice.style.display  = method === 'hosted'  ? '' : 'none';
             directNotice.style.display  = method === 'direct'  ? '' : 'none';
             bitcartNotice.style.display = method === 'bitcart' ? '' : 'none';
@@ -254,16 +260,76 @@
 
         // -------- Bootstrap from /api/config (reveal Bitcart/Card if available)
         // and apply payment-link query params (?amount=&description=&email=&method=).
-        let serverCardProvider = null; // primary card-onramp provider id (e.g. 'nowpayments-card')
+        let serverCardProvider = null;       // primary card-onramp provider id (server default)
+        let selectedCardProvider = null;     // what the customer picked from the chooser
+        let availableCardProviders = [];     // ordered list of providers we can use
 
         function providerHumanName(p) {
             switch (p) {
                 case 'transak':           return 'Transak';
                 case 'moonpay':           return 'MoonPay';
                 case 'moonpay-public':    return 'MoonPay';
-                case 'nowpayments-card':  return 'NOWPayments (powered by Simplex / Mercuryo)';
+                case 'nowpayments-card':  return 'NOWPayments (Simplex / Mercuryo)';
+                case 'changenow':         return 'ChangeNOW';
+                case 'guardarian':        return 'Guardarian';
                 default:                  return 'our PCI-DSS card processor';
             }
+        }
+
+        function providerSubtitle(p, meta) {
+            if (meta && meta.aggregator)                  return 'Routes through Mercuryo, Simplex, Wert & more · 200+ countries';
+            if (p === 'changenow')                        return 'Aggregator · 200+ countries · best for global coverage';
+            if (p === 'guardarian')                       return 'Aggregator · 190+ countries · strong Africa coverage';
+            if (p === 'moonpay-public' || p === 'moonpay') return 'Direct via MoonPay · limited regions (not Uganda)';
+            if (p === 'nowpayments-card')                 return 'Simplex / Mercuryo via NOWPayments hosted invoice';
+            if (p === 'transak')                          return 'Branded Transak partner flow';
+            return '';
+        }
+
+        function providerBadge(p, meta) {
+            if (meta && meta.regions === 'global')      return { text: 'Global', cls: 'badge-global' };
+            if (meta && meta.regions === 'limited')     return { text: 'Limited regions', cls: 'badge-limited' };
+            if (meta && meta.aggregator)                return { text: 'Global', cls: 'badge-global' };
+            return null;
+        }
+
+        // Display order: aggregators first (best global coverage), then KYB-required
+        // partner flows if available, then MoonPay-public (limited regions) last.
+        const PROVIDER_ORDER = ['changenow', 'guardarian', 'transak', 'moonpay', 'nowpayments-card', 'moonpay-public'];
+
+        function renderProviderChooser() {
+            const root = document.getElementById('cardProviderChooser');
+            if (!root) return;
+            root.innerHTML = '';
+            availableCardProviders.forEach((p, i) => {
+                const tile = document.createElement('label');
+                tile.className = 'provider-tile' + (i === 0 ? ' selected' : '');
+                tile.dataset.provider = p.id;
+                const badge = providerBadge(p.id, p.meta);
+                tile.innerHTML = `
+                    <input type="radio" name="cardProvider" value="${p.id}" ${i === 0 ? 'checked' : ''}>
+                    <div class="pt-head">
+                        <span class="pt-name">${providerHumanName(p.id)}</span>
+                        ${badge ? `<span class="pt-badge ${badge.cls}">${badge.text}</span>` : ''}
+                    </div>
+                    <div class="pt-sub">${providerSubtitle(p.id, p.meta)}</div>
+                `;
+                tile.addEventListener('click', () => selectCardProvider(p.id));
+                root.appendChild(tile);
+            });
+            if (availableCardProviders.length > 0) {
+                selectedCardProvider = availableCardProviders[0].id;
+            }
+        }
+
+        function selectCardProvider(id) {
+            selectedCardProvider = id;
+            document.querySelectorAll('#cardProviderChooser .provider-tile').forEach(t => {
+                const sel = t.dataset.provider === id;
+                t.classList.toggle('selected', sel);
+                const input = t.querySelector('input');
+                if (input) input.checked = sel;
+            });
         }
 
         (async function bootstrap() {
@@ -279,8 +345,13 @@
                 document.getElementById('methodCard').style.display = '';
                 visible++;
                 serverCardProvider = cfg.card?.provider || null;
-                const lbl = document.getElementById('cardProviderName');
-                if (lbl) lbl.textContent = providerHumanName(serverCardProvider);
+
+                const providersMeta = cfg.card?.providers || {};
+                availableCardProviders = PROVIDER_ORDER
+                    .filter(p => providersMeta[p])
+                    .map(p => ({ id: p, meta: providersMeta[p] }));
+                renderProviderChooser();
+
                 // Card is the most consumer-friendly default — select it on first paint.
                 selectMethod('card');
             }
@@ -339,14 +410,18 @@
                             : '/api/invoice';
 
             try {
+                const body = {
+                    amount,
+                    email: email || undefined,
+                    description: description || undefined,
+                };
+                if (method === 'card' && selectedCardProvider) {
+                    body.provider = selectedCardProvider;
+                }
                 const res = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        amount,
-                        email: email || undefined,
-                        description: description || undefined,
-                    }),
+                    body: JSON.stringify(body),
                 });
                 const data = await res.json();
                 if (!res.ok || !data.success) {

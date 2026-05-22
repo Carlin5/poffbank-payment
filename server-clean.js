@@ -103,13 +103,37 @@ const CARD_ONRAMP_NOWPAYMENTS_FALLBACK = String(process.env.CARD_ONRAMP_NOWPAYME
 // Public MoonPay consumer URL fallback (no API key, no merchant account).
 // Customer goes through MoonPay's standard consumer KYC; USDT TRC-20 settles
 // straight to USDT_TRC20_WALLET. Disable with CARD_ONRAMP_MOONPAY_PUBLIC=false.
+// NB: MoonPay does NOT support a number of regions (e.g. Uganda) for card buys.
 const CARD_ONRAMP_MOONPAY_PUBLIC = String(process.env.CARD_ONRAMP_MOONPAY_PUBLIC || 'true').toLowerCase() !== 'false';
 
-const CARD_ONRAMP_ENABLED = TRANSAK_ENABLED || MOONPAY_ENABLED || CARD_ONRAMP_NOWPAYMENTS_FALLBACK || CARD_ONRAMP_MOONPAY_PUBLIC;
+// ChangeNOW public buy URL (aggregator routing through Mercuryo / Simplex /
+// MoonPay / Wert / Banxa). No merchant account, no API key needed. Wider
+// regional coverage than any single provider because the customer is matched
+// at checkout to whichever sub-processor supports their country.
+const CARD_ONRAMP_CHANGENOW = String(process.env.CARD_ONRAMP_CHANGENOW || 'true').toLowerCase() !== 'false';
+
+// Guardarian public buy URL (aggregator routing primarily through Mercuryo).
+// Documented 190+ country support; covers many regions MoonPay does not.
+// No merchant account, no API key.
+const CARD_ONRAMP_GUARDARIAN = String(process.env.CARD_ONRAMP_GUARDARIAN || 'true').toLowerCase() !== 'false';
+
+const CARD_ONRAMP_ENABLED =
+  TRANSAK_ENABLED ||
+  MOONPAY_ENABLED ||
+  CARD_ONRAMP_NOWPAYMENTS_FALLBACK ||
+  CARD_ONRAMP_CHANGENOW ||
+  CARD_ONRAMP_GUARDARIAN ||
+  CARD_ONRAMP_MOONPAY_PUBLIC;
+
+// Default provider when the customer doesn't pick one explicitly. ChangeNOW
+// is the global-coverage default; MoonPay-public is last because of its
+// regional limitations.
 const CARD_ONRAMP_DEFAULT_PROVIDER =
   TRANSAK_ENABLED ? 'transak'
   : MOONPAY_ENABLED ? 'moonpay'
   : CARD_ONRAMP_NOWPAYMENTS_FALLBACK ? 'nowpayments-card'
+  : CARD_ONRAMP_CHANGENOW ? 'changenow'
+  : CARD_ONRAMP_GUARDARIAN ? 'guardarian'
   : CARD_ONRAMP_MOONPAY_PUBLIC ? 'moonpay-public'
   : null;
 
@@ -556,6 +580,45 @@ function buildPublicMoonpayUrl({ orderId, amount, email }) {
   return `https://buy.moonpay.com/?${query}`;
 }
 
+/**
+ * Build a ChangeNOW public buy-with-card URL. ChangeNOW is an aggregator that
+ * matches the customer to whichever sub-processor (Mercuryo, Simplex, Wert,
+ * Banxa, MoonPay) is supported in their country at checkout time. No partner
+ * API key needed. The buy widget loads on /buy/tether-trc20 with the wallet
+ * address and base-fiat amount preset as query params.
+ *
+ * Status updates are best-effort (no webhook to attach), so the order stays
+ * 'waiting' on our side until the merchant confirms receipt on-chain.
+ */
+function buildChangeNowUrl({ orderId, amount, email }) {
+  const query = encodeQuery({
+    amount: Number(amount).toFixed(2),
+    fiat: PRICE_CURRENCY.toLowerCase(),
+    wallet: USDT_TRC20_WALLET,
+    email: email || undefined,
+    referralId: orderId,
+  });
+  return `https://changenow.io/buy/tether-trc20?${query}`;
+}
+
+/**
+ * Build a Guardarian public buy URL. Guardarian routes primarily through
+ * Mercuryo and supports 190+ countries including most African nations
+ * (Uganda, Kenya, Nigeria, Ghana, etc.). No partner API key needed.
+ */
+function buildGuardarianUrl({ orderId, amount, email }) {
+  const query = encodeQuery({
+    type: 'buy',
+    currency_from: PRICE_CURRENCY.toUpperCase(),
+    currency_to: 'USDTRC20',
+    amount_from: Number(amount).toFixed(2),
+    payout_address: USDT_TRC20_WALLET,
+    email: email || undefined,
+    partner_order_id: orderId,
+  });
+  return `https://guardarian.com/?${query}`;
+}
+
 // ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
@@ -596,7 +659,9 @@ app.get('/api/config', (_req, res) => {
         transak: TRANSAK_ENABLED ? { environment: TRANSAK_ENVIRONMENT.toLowerCase(), kybRequired: true } : null,
         moonpay: MOONPAY_ENABLED ? { environment: MOONPAY_ENVIRONMENT, kybRequired: true } : null,
         'nowpayments-card': CARD_ONRAMP_NOWPAYMENTS_FALLBACK ? { kybRequired: false } : null,
-        'moonpay-public': CARD_ONRAMP_MOONPAY_PUBLIC ? { kybRequired: false } : null,
+        changenow: CARD_ONRAMP_CHANGENOW ? { kybRequired: false, aggregator: true, regions: 'global' } : null,
+        guardarian: CARD_ONRAMP_GUARDARIAN ? { kybRequired: false, aggregator: true, regions: 'global' } : null,
+        'moonpay-public': CARD_ONRAMP_MOONPAY_PUBLIC ? { kybRequired: false, regions: 'limited' } : null,
       },
       settles: 'USDT TRC-20',
     } : null,
@@ -831,6 +896,8 @@ app.post('/api/card-onramp', async (req, res) => {
     if (requested === 'transak' && TRANSAK_ENABLED) provider = 'transak';
     else if (requested === 'moonpay' && MOONPAY_ENABLED) provider = 'moonpay';
     else if (requested === 'nowpayments-card' && CARD_ONRAMP_NOWPAYMENTS_FALLBACK) provider = 'nowpayments-card';
+    else if (requested === 'changenow' && CARD_ONRAMP_CHANGENOW) provider = 'changenow';
+    else if (requested === 'guardarian' && CARD_ONRAMP_GUARDARIAN) provider = 'guardarian';
     else if (requested === 'moonpay-public' && CARD_ONRAMP_MOONPAY_PUBLIC) provider = 'moonpay-public';
     else if (requested && requested !== provider) {
       return res.status(400).json({
@@ -851,6 +918,12 @@ app.post('/api/card-onramp', async (req, res) => {
       providerEnv = MOONPAY_ENVIRONMENT;
     } else if (provider === 'moonpay-public') {
       onrampUrl = buildPublicMoonpayUrl({ orderId, amount, email });
+      providerEnv = 'public';
+    } else if (provider === 'changenow') {
+      onrampUrl = buildChangeNowUrl({ orderId, amount, email });
+      providerEnv = 'public';
+    } else if (provider === 'guardarian') {
+      onrampUrl = buildGuardarianUrl({ orderId, amount, email });
       providerEnv = 'public';
     } else if (provider === 'nowpayments-card') {
       // No-KYB fallback: create a NOWPayments hosted invoice. The customer sees
@@ -1397,6 +1470,8 @@ app.listen(PORT, () => {
     if (TRANSAK_ENABLED) providers.push(`transak:${TRANSAK_ENVIRONMENT.toLowerCase()}`);
     if (MOONPAY_ENABLED) providers.push(`moonpay:${MOONPAY_ENVIRONMENT}`);
     if (CARD_ONRAMP_NOWPAYMENTS_FALLBACK) providers.push('nowpayments-card (no-KYB)');
+    if (CARD_ONRAMP_CHANGENOW) providers.push('changenow (no-KYB, global)');
+    if (CARD_ONRAMP_GUARDARIAN) providers.push('guardarian (no-KYB, global)');
     if (CARD_ONRAMP_MOONPAY_PUBLIC) providers.push('moonpay-public (no-KYB)');
     console.log(`  Card on-ramp:   enabled → ${providers.join(', ')}`);
     console.log(`  Default route:  ${CARD_ONRAMP_DEFAULT_PROVIDER}`);

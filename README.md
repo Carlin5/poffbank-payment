@@ -83,18 +83,26 @@ Navigate to: `http://localhost:3000`
 
 ## Card → USDT setup
 
-**Out of the box, no configuration needed.** The "Pay with card" button on `/pay.html` redirects the customer to MoonPay's public consumer flow (`moonpay-public`). The customer completes MoonPay's own KYC and pays by card; USDT TRC-20 settles directly to your wallet `TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh`. No merchant account, no API key, no dashboard toggles.
+**Out of the box, no configuration needed.** The "Pay with card" tile on `/pay.html` shows a chooser of three globally-available, no-KYB card processors. The customer picks whichever works in their region; whichever they pick, USDT (TRC-20) settles directly to `TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh` on-chain.
 
-The gateway picks the first available card-onramp provider in this order:
-
-| # | Provider          | Merchant KYB needed | What you do                                                                                                                  |
-|---|-------------------|---------------------|------------------------------------------------------------------------------------------------------------------------------|
-| 1 | `transak`         | **Yes**             | Sign up at https://transak.com → pass KYB → put `TRANSAK_API_KEY` + `TRANSAK_WEBHOOK_SECRET` in env. Branded, signed flow.   |
-| 2 | `moonpay`         | **Yes**             | Sign up at https://www.moonpay.com → pass KYB → put `MOONPAY_API_KEY` + `MOONPAY_SECRET_KEY` in env. Branded, signed flow.   |
-| 3 | `moonpay-public`  | **No**              | **Default.** Links to MoonPay's public consumer URL with your USDT TRC-20 wallet preset. Works out of the box.               |
-| 4 | `nowpayments-card`| **No**              | Opt-in (`CARD_ONRAMP_NOWPAYMENTS_FALLBACK=true`). See "NOWPayments Card Setup" below.                                        |
+| Provider             | Merchant KYB | Coverage              | Notes                                                                                                                  |
+|----------------------|--------------|-----------------------|------------------------------------------------------------------------------------------------------------------------|
+| `changenow`          | **No**       | Global (200+ countries) | **Default.** Aggregator that routes through Mercuryo, Simplex, Wert, Banxa.                                            |
+| `guardarian`         | **No**       | 190+ countries        | Aggregator routing primarily through Mercuryo. Strong Africa coverage including Uganda.                                |
+| `moonpay-public`     | **No**       | Limited (no Uganda, etc.) | MoonPay's public consumer URL with your wallet preset. Kept for customers in MoonPay-supported regions.                |
+| `transak`            | **Yes**      | 150+ countries        | Set `TRANSAK_API_KEY` + `TRANSAK_WEBHOOK_SECRET` in env after KYB approval. Branded, signed-webhook flow.              |
+| `moonpay`            | **Yes**      | 160+ countries        | Set `MOONPAY_API_KEY` + `MOONPAY_SECRET_KEY` in env after KYB approval. Branded, signed-webhook flow.                  |
+| `nowpayments-card`   | No (account) | Per Simplex/Mercuryo  | Opt-in via `CARD_ONRAMP_NOWPAYMENTS_FALLBACK=true`. Needs a NOWPayments account whose KYB is approved + 3 dashboard toggles. |
 
 In every case, the destination is your USDT TRC-20 wallet (`USDT_TRC20_WALLET`, defaults to `TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh`). Card data never touches this server.
+
+### How the customer experience works
+
+1. Customer opens `/pay.html`, enters amount / email, picks "Pay with card".
+2. They see a chooser of all the enabled processors (with a "Global" badge on aggregators and a "Limited regions" badge on MoonPay).
+3. They pick one — defaulting to ChangeNOW — and click "Continue to Card Payment".
+4. They are redirected to that provider's hosted page with your wallet locked in the URL. They complete the provider's KYC and pay by card. USDT TRC-20 settles on-chain to your merchant wallet.
+5. If a processor says "not supported in your region", the customer hits Back and picks another one. No order is consumed.
 
 ### NOWPayments Card Setup (optional upgrade)
 

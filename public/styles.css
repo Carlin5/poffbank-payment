@@ -208,6 +208,56 @@ body {
 .method-option .mt-sub   { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
 @media (max-width: 520px) { .method-toggle { grid-template-columns: 1fr; } }
 
+/* Card provider chooser (sub-selector shown when "Pay with card" is active) */
+.provider-chooser {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px 28px 4px;
+}
+@media (min-width: 720px) { .provider-chooser { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1080px) { .provider-chooser { grid-template-columns: 1fr 1fr 1fr; } }
+.provider-tile {
+    position: relative;
+    cursor: pointer;
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px 14px 44px;
+    background: #fff;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+    display: block;
+}
+.provider-tile input { position: absolute; opacity: 0; pointer-events: none; }
+.provider-tile::before {
+    content: '';
+    position: absolute; left: 16px; top: 18px;
+    width: 18px; height: 18px;
+    border-radius: 50%; border: 2px solid #cbd4e2;
+    background: #fff;
+    transition: border-color .15s, background .15s;
+}
+.provider-tile::after {
+    content: '';
+    position: absolute; left: 22px; top: 24px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: transparent;
+    transition: background .15s;
+}
+.provider-tile:hover { border-color: #c9d4e2; }
+.provider-tile.selected { border-color: var(--navy); background: #f7fafd; box-shadow: 0 0 0 3px rgba(34,58,102,0.08); }
+.provider-tile.selected::before { border-color: var(--navy); }
+.provider-tile.selected::after  { background: var(--navy); }
+.provider-tile .pt-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.provider-tile .pt-name { font-size: 14px; font-weight: 700; color: var(--navy); line-height: 1.2; }
+.provider-tile .pt-badge {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: 0.4px;
+}
+.provider-tile .pt-badge.badge-global  { background: #e8f6ec; color: #1f7a3d; border: 1px solid #b9e0c4; }
+.provider-tile .pt-badge.badge-limited { background: #fdf3e7; color: #9b5b16; border: 1px solid #f2d8b2; }
+.provider-tile .pt-sub { display: block; font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+
 /* Form */
 .form-card { padding: 0; }
 .form-body { padding: 24px 28px 28px; }

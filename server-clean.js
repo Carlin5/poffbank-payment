@@ -117,10 +117,22 @@ const CARD_ONRAMP_CHANGENOW = String(process.env.CARD_ONRAMP_CHANGENOW || 'true'
 // No merchant account, no API key.
 const CARD_ONRAMP_GUARDARIAN = String(process.env.CARD_ONRAMP_GUARDARIAN || 'true').toLowerCase() !== 'false';
 
+// Banxa partner checkout. UNLIKE the other no-KYB providers above, Banxa is
+// a B2B aggregator that requires the *merchant* to have a partner account
+// (Banxa onboards via business KYB). This means the Banxa tile is OFF by
+// default and only appears in the chooser if the merchant sets
+// BANXA_PARTNER_SUBDOMAIN (e.g. "poffbank" so the checkout URL becomes
+// https://poffbank.banxa.com/?...). Banxa coverage includes Uganda and most
+// of Africa via Mercuryo, so if the merchant ever gets approved this is
+// worth turning on.
+const BANXA_PARTNER_SUBDOMAIN = String(process.env.BANXA_PARTNER_SUBDOMAIN || '').trim();
+const CARD_ONRAMP_BANXA = Boolean(BANXA_PARTNER_SUBDOMAIN);
+
 const CARD_ONRAMP_ENABLED =
   TRANSAK_ENABLED ||
   MOONPAY_ENABLED ||
   CARD_ONRAMP_NOWPAYMENTS_FALLBACK ||
+  CARD_ONRAMP_BANXA ||
   CARD_ONRAMP_CHANGENOW ||
   CARD_ONRAMP_GUARDARIAN ||
   CARD_ONRAMP_MOONPAY_PUBLIC;
@@ -131,6 +143,7 @@ const CARD_ONRAMP_ENABLED =
 const CARD_ONRAMP_DEFAULT_PROVIDER =
   TRANSAK_ENABLED ? 'transak'
   : MOONPAY_ENABLED ? 'moonpay'
+  : CARD_ONRAMP_BANXA ? 'banxa'
   : CARD_ONRAMP_NOWPAYMENTS_FALLBACK ? 'nowpayments-card'
   : CARD_ONRAMP_CHANGENOW ? 'changenow'
   : CARD_ONRAMP_GUARDARIAN ? 'guardarian'
@@ -602,6 +615,36 @@ function buildChangeNowUrl({ orderId, amount, email }) {
 }
 
 /**
+ * Build a ChangeNOW iframe-embed URL. This is the widget version of the buy
+ * page — it has no header, no "Log In / Sign Up" buttons, no marketing
+ * content. Renders only the fiat→crypto buy form. Hosted inside an iframe
+ * on /pay.html so the customer never leaves PoffBank.
+ */
+function buildChangeNowEmbedUrl({ orderId, amount, email }) {
+  const query = encodeQuery({
+    FAQ: 'false',
+    amount: Number(amount).toFixed(2),
+    amountFiat: Number(amount).toFixed(2),
+    backgroundColor: 'FFFFFF',
+    from: PRICE_CURRENCY.toLowerCase(),
+    fromFiat: PRICE_CURRENCY.toLowerCase(),
+    horizontal: 'false',
+    lang: 'en-US',
+    link_id: orderId,
+    locales: 'true',
+    logo: 'false',
+    primaryColor: '4663C9',
+    to: 'usdttrc20',
+    toCrypto: 'usdttrc20',
+    toTheMoon: 'true',
+    fiatMode: 'true',
+    address: USDT_TRC20_WALLET,
+    email: email || undefined,
+  });
+  return `https://changenow.io/embeds/exchange-widget/v2/widget.html?${query}`;
+}
+
+/**
  * Build a Guardarian public buy URL. Guardarian routes primarily through
  * Mercuryo and supports 190+ countries including most African nations
  * (Uganda, Kenya, Nigeria, Ghana, etc.). No partner API key needed.
@@ -617,6 +660,48 @@ function buildGuardarianUrl({ orderId, amount, email }) {
     partner_order_id: orderId,
   });
   return `https://guardarian.com/?${query}`;
+}
+
+/**
+ * Build a Guardarian iframe-embed URL (calculator/v1 endpoint). Strips the
+ * marketing header and renders only the fiat→crypto form.
+ */
+function buildGuardarianEmbedUrl({ orderId, amount, email }) {
+  const query = encodeQuery({
+    type: 'buy',
+    from: PRICE_CURRENCY.toUpperCase(),
+    to: 'USDTRC20',
+    amount: Number(amount).toFixed(2),
+    partner_addr: USDT_TRC20_WALLET,
+    payout_address: USDT_TRC20_WALLET,
+    email: email || undefined,
+    partner_order_id: orderId,
+    theme: 'light',
+  });
+  return `https://guardarian.com/calculator/v1?${query}`;
+}
+
+/**
+ * Build a Banxa partner checkout URL. Requires BANXA_PARTNER_SUBDOMAIN to be
+ * set (e.g. "poffbank" → https://poffbank.banxa.com/?...). Banxa partners
+ * get their own subdomain after KYB approval. Wallet is locked into the
+ * query string the same way the other providers do it.
+ */
+function buildBanxaUrl({ orderId, amount, email }) {
+  const query = encodeQuery({
+    coinType: 'USDT',
+    blockchain: 'TRC20',
+    fiatType: PRICE_CURRENCY.toUpperCase(),
+    fiatAmount: Number(amount).toFixed(2),
+    walletAddress: USDT_TRC20_WALLET,
+    orderType: 'BUY',
+    backgroundColor: 'FFFFFF',
+    primaryColor: '4663C9',
+    email: email || undefined,
+    accountReference: orderId,
+    orderId,
+  });
+  return `https://${BANXA_PARTNER_SUBDOMAIN}.banxa.com/?${query}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -659,8 +744,9 @@ app.get('/api/config', (_req, res) => {
         transak: TRANSAK_ENABLED ? { environment: TRANSAK_ENVIRONMENT.toLowerCase(), kybRequired: true } : null,
         moonpay: MOONPAY_ENABLED ? { environment: MOONPAY_ENVIRONMENT, kybRequired: true } : null,
         'nowpayments-card': CARD_ONRAMP_NOWPAYMENTS_FALLBACK ? { kybRequired: false } : null,
-        changenow: CARD_ONRAMP_CHANGENOW ? { kybRequired: false, aggregator: true, regions: 'global' } : null,
-        guardarian: CARD_ONRAMP_GUARDARIAN ? { kybRequired: false, aggregator: true, regions: 'global' } : null,
+        banxa: CARD_ONRAMP_BANXA ? { kybRequired: true, aggregator: true, regions: 'global' } : null,
+        changenow: CARD_ONRAMP_CHANGENOW ? { kybRequired: false, aggregator: true, regions: 'global', embeddable: true } : null,
+        guardarian: CARD_ONRAMP_GUARDARIAN ? { kybRequired: false, aggregator: true, regions: 'global', embeddable: true } : null,
         'moonpay-public': CARD_ONRAMP_MOONPAY_PUBLIC ? { kybRequired: false, regions: 'limited' } : null,
       },
       settles: 'USDT TRC-20',
@@ -866,7 +952,7 @@ app.post('/api/direct-invoice/:orderId/submit-tx', async (req, res) => {
  * fiat to USDT, and settles the USDT on-chain directly to our merchant wallet.
  *
  * Body: { amount: number, email?: string, description?: string, provider?: 'transak'|'moonpay' }
- * Returns: { orderId, onrampUrl, provider }
+ * Returns: { orderId, onrampUrl, embedUrl?, provider }
  */
 app.post('/api/card-onramp', async (req, res) => {
   try {
@@ -896,6 +982,7 @@ app.post('/api/card-onramp', async (req, res) => {
     if (requested === 'transak' && TRANSAK_ENABLED) provider = 'transak';
     else if (requested === 'moonpay' && MOONPAY_ENABLED) provider = 'moonpay';
     else if (requested === 'nowpayments-card' && CARD_ONRAMP_NOWPAYMENTS_FALLBACK) provider = 'nowpayments-card';
+    else if (requested === 'banxa' && CARD_ONRAMP_BANXA) provider = 'banxa';
     else if (requested === 'changenow' && CARD_ONRAMP_CHANGENOW) provider = 'changenow';
     else if (requested === 'guardarian' && CARD_ONRAMP_GUARDARIAN) provider = 'guardarian';
     else if (requested === 'moonpay-public' && CARD_ONRAMP_MOONPAY_PUBLIC) provider = 'moonpay-public';
@@ -908,6 +995,7 @@ app.post('/api/card-onramp', async (req, res) => {
 
     const orderId = `POB-${Date.now()}-${uuidv4().slice(0, 8).toUpperCase()}`;
     let onrampUrl;
+    let embedUrl;
     let providerEnv;
     let invoiceId;
     if (provider === 'transak') {
@@ -921,10 +1009,15 @@ app.post('/api/card-onramp', async (req, res) => {
       providerEnv = 'public';
     } else if (provider === 'changenow') {
       onrampUrl = buildChangeNowUrl({ orderId, amount, email });
+      embedUrl = buildChangeNowEmbedUrl({ orderId, amount, email });
       providerEnv = 'public';
     } else if (provider === 'guardarian') {
       onrampUrl = buildGuardarianUrl({ orderId, amount, email });
+      embedUrl = buildGuardarianEmbedUrl({ orderId, amount, email });
       providerEnv = 'public';
+    } else if (provider === 'banxa') {
+      onrampUrl = buildBanxaUrl({ orderId, amount, email });
+      providerEnv = 'partner';
     } else if (provider === 'nowpayments-card') {
       // No-KYB fallback: create a NOWPayments hosted invoice. The customer sees
       // a "Buy with card" button on the hosted page (Simplex/Mercuryo). USDT
@@ -957,6 +1050,7 @@ app.post('/api/card-onramp', async (req, res) => {
       network: 'TRC20',
       contract: USDT_TRC20_CONTRACT,
       onrampUrl,
+      embedUrl,
       invoiceId,
       // For NOWPayments fallback, status will be updated by /api/webhook/nowpayments
       // (which already handles the IPN signed payload). For moonpay-public, no
@@ -977,6 +1071,7 @@ app.post('/api/card-onramp', async (req, res) => {
       amount,
       currency: order.currency,
       onrampUrl,
+      embedUrl,
       settlement: { wallet: USDT_TRC20_WALLET, network: 'TRC20', asset: 'USDT' },
     });
   } catch (err) {
@@ -1470,6 +1565,7 @@ app.listen(PORT, () => {
     if (TRANSAK_ENABLED) providers.push(`transak:${TRANSAK_ENVIRONMENT.toLowerCase()}`);
     if (MOONPAY_ENABLED) providers.push(`moonpay:${MOONPAY_ENVIRONMENT}`);
     if (CARD_ONRAMP_NOWPAYMENTS_FALLBACK) providers.push('nowpayments-card (no-KYB)');
+    if (CARD_ONRAMP_BANXA) providers.push(`banxa (partner: ${BANXA_PARTNER_SUBDOMAIN}.banxa.com)`);
     if (CARD_ONRAMP_CHANGENOW) providers.push('changenow (no-KYB, global)');
     if (CARD_ONRAMP_GUARDARIAN) providers.push('guardarian (no-KYB, global)');
     if (CARD_ONRAMP_MOONPAY_PUBLIC) providers.push('moonpay-public (no-KYB)');

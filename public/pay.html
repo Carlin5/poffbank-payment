@@ -153,12 +153,27 @@
                         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
                         <div>
                             <div class="t">Pay with credit or debit card</div>
-                            <div class="d">Pick your preferred processor below. Each one handles card data + identity verification themselves — nothing card-related touches PoffBank. Your payment is converted to USDT and settled on-chain to PoffBank's USDT (TRC&#8209;20) wallet within minutes. <strong>If one says "not supported in your region", just come back and try another.</strong></div>
+                            <div class="d">Card data + identity verification are handled by our PCI-DSS card processor — nothing card-related touches PoffBank. Your payment is converted to USDT and settled on-chain to our USDT (TRC&#8209;20) wallet within minutes.</div>
+                            <ol class="steps" aria-label="How card payment works">
+                                <li><span class="step-num">1</span><span class="step-text"><strong>Enter your card</strong> on the secure form below (no signup required).</span></li>
+                                <li><span class="step-num">2</span><span class="step-text"><strong>Quick ID check</strong> — a selfie and a photo of your ID, done in the same window.</span></li>
+                                <li><span class="step-num">3</span><span class="step-text"><strong>USDT lands</strong> at PoffBank's TRC&#8209;20 wallet automatically. Receipt emailed.</span></li>
+                            </ol>
+                            <div class="d" style="margin-top:6px;">If one processor says <em>“not supported in your region”</em>, just pick another from the chooser below and try again — your wallet destination stays the same.</div>
                         </div>
                     </div>
 
                     <div class="provider-chooser" id="cardProviderChooser" role="radiogroup" aria-label="Card processor" style="display:none;">
                         <!-- Tiles populated from /api/config -->
+                    </div>
+
+                    <div class="embed-panel" id="cardEmbedPanel" style="display:none;">
+                        <div class="embed-head">
+                            <span class="embed-title">Secure card form</span>
+                            <a class="embed-newtab" id="cardEmbedNewTab" href="#" target="_blank" rel="noopener">Open in new tab ↗</a>
+                        </div>
+                        <iframe id="cardEmbedFrame" title="Secure card checkout" allow="payment; camera; microphone" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                        <div class="embed-foot">Hosted by the card processor · PoffBank never sees your card details.</div>
                     </div>
                     <div class="notice" id="hostedNotice">
                         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
@@ -239,6 +254,13 @@
             cardNotice.style.display    = method === 'card'    ? '' : 'none';
             const chooser = document.getElementById('cardProviderChooser');
             if (chooser) chooser.style.display = (method === 'card' && availableCardProviders.length > 0) ? '' : 'none';
+            // Hide any open card-form iframe when switching methods.
+            const embedPanel = document.getElementById('cardEmbedPanel');
+            if (embedPanel && method !== 'card') {
+                embedPanel.style.display = 'none';
+                const f = document.getElementById('cardEmbedFrame');
+                if (f) f.src = 'about:blank';
+            }
             hostedNotice.style.display  = method === 'hosted'  ? '' : 'none';
             directNotice.style.display  = method === 'direct'  ? '' : 'none';
             bitcartNotice.style.display = method === 'bitcart' ? '' : 'none';
@@ -272,30 +294,34 @@
                 case 'nowpayments-card':  return 'NOWPayments (Simplex / Mercuryo)';
                 case 'changenow':         return 'ChangeNOW';
                 case 'guardarian':        return 'Guardarian';
+                case 'banxa':             return 'Banxa';
                 default:                  return 'our PCI-DSS card processor';
             }
         }
 
         function providerSubtitle(p, meta) {
-            if (meta && meta.aggregator)                  return 'Routes through Mercuryo, Simplex, Wert & more · 200+ countries';
-            if (p === 'changenow')                        return 'Aggregator · 200+ countries · best for global coverage';
-            if (p === 'guardarian')                       return 'Aggregator · 190+ countries · strong Africa coverage';
-            if (p === 'moonpay-public' || p === 'moonpay') return 'Direct via MoonPay · limited regions (not Uganda)';
-            if (p === 'nowpayments-card')                 return 'Simplex / Mercuryo via NOWPayments hosted invoice';
-            if (p === 'transak')                          return 'Branded Transak partner flow';
+            if (p === 'changenow')                         return 'Card form opens here on PoffBank · routes via Mercuryo / Simplex / Wert';
+            if (p === 'guardarian')                        return 'Card form opens here on PoffBank · strong Africa coverage via Mercuryo';
+            if (p === 'banxa')                             return 'Card form opens in a new tab · partner flow, multi-processor routing';
+            if (p === 'moonpay-public' || p === 'moonpay') return 'Card form opens in a new tab · limited regions (not Uganda)';
+            if (p === 'nowpayments-card')                  return 'Simplex / Mercuryo via NOWPayments hosted invoice';
+            if (p === 'transak')                           return 'Branded Transak partner flow';
+            if (meta && meta.aggregator)                   return 'Routes through Mercuryo, Simplex, Wert & more · 200+ countries';
             return '';
         }
 
         function providerBadge(p, meta) {
+            if (meta && meta.embeddable)                return { text: 'Inline', cls: 'badge-global' };
             if (meta && meta.regions === 'global')      return { text: 'Global', cls: 'badge-global' };
             if (meta && meta.regions === 'limited')     return { text: 'Limited regions', cls: 'badge-limited' };
             if (meta && meta.aggregator)                return { text: 'Global', cls: 'badge-global' };
             return null;
         }
 
-        // Display order: aggregators first (best global coverage), then KYB-required
-        // partner flows if available, then MoonPay-public (limited regions) last.
-        const PROVIDER_ORDER = ['changenow', 'guardarian', 'transak', 'moonpay', 'nowpayments-card', 'moonpay-public'];
+        // Display order: embeddable aggregators first (card form opens inline on
+        // PoffBank — best UX), then KYB-required partner flows if available, then
+        // MoonPay-public (limited regions) last.
+        const PROVIDER_ORDER = ['changenow', 'guardarian', 'banxa', 'transak', 'moonpay', 'nowpayments-card', 'moonpay-public'];
 
         function renderProviderChooser() {
             const root = document.getElementById('cardProviderChooser');
@@ -330,6 +356,14 @@
                 const input = t.querySelector('input');
                 if (input) input.checked = sel;
             });
+            // Reset any previously rendered iframe so the customer doesn't see a
+            // stale card form from the old provider after switching.
+            const embedPanel = document.getElementById('cardEmbedPanel');
+            const embedFrame = document.getElementById('cardEmbedFrame');
+            if (embedPanel && embedPanel.style.display !== 'none') {
+                embedPanel.style.display = 'none';
+                if (embedFrame) embedFrame.src = 'about:blank';
+            }
         }
 
         (async function bootstrap() {
@@ -433,6 +467,20 @@
                     window.location.href = '/pay-direct.html?order_id=' + encodeURIComponent(data.orderId);
                 } else if (method === 'card') {
                     if (!data.onrampUrl) throw new Error('No card on-ramp URL returned.');
+                    if (data.embedUrl) {
+                        // Render the provider's card widget inline on PoffBank.
+                        // Customer never leaves — no "sign up" wall, just a card form.
+                        const panel    = document.getElementById('cardEmbedPanel');
+                        const frame    = document.getElementById('cardEmbedFrame');
+                        const newTab   = document.getElementById('cardEmbedNewTab');
+                        frame.src      = data.embedUrl;
+                        newTab.href    = data.onrampUrl;
+                        panel.style.display = '';
+                        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        btn.classList.remove('loading');
+                        btn.disabled = false;
+                        return;
+                    }
                     window.location.href = data.onrampUrl;
                 } else {
                     if (!data.invoiceUrl) throw new Error('No invoice URL returned.');

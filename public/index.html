@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PoffBank — Secure offshore payment gateway. Accept deposits via card or crypto, settled in USDT (TRC-20) on-chain.">
+    <title>PoffBank — Secure Payment Gateway</title>
+    <link rel="icon" href="https://poffbank.com/public/uploads/media/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        /* ---- Landing-page additions ---- */
+        .hero {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 60%, var(--navy-darker) 100%);
+            color: #fff;
+            padding: 80px 24px 72px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute; top: -120px; right: -120px;
+            width: 440px; height: 440px;
+            background: radial-gradient(circle, rgba(225,36,84,0.25), transparent 70%);
+            pointer-events: none;
+        }
+        .hero::after {
+            content: '';
+            position: absolute; bottom: -80px; left: -80px;
+            width: 320px; height: 320px;
+            background: radial-gradient(circle, rgba(70,99,201,0.2), transparent 70%);
+            pointer-events: none;
+        }
+        .hero-inner {
+            max-width: 760px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 16px; border-radius: 999px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.14);
+            font-size: 12px; font-weight: 700;
+            letter-spacing: 0.12em; text-transform: uppercase;
+            color: rgba(255,255,255,0.85);
+            margin-bottom: 28px;
+        }
+        .hero-badge svg { width: 14px; height: 14px; stroke: rgba(255,255,255,0.85); }
+        .hero h1 {
+            font-family: 'Plus Jakarta Sans','Inter',sans-serif;
+            font-size: clamp(32px, 5vw, 52px);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin: 0 0 18px;
+        }
+        .hero h1 .accent { color: var(--red); }
+        .hero .hero-sub {
+            font-size: 17px;
+            color: rgba(255,255,255,0.7);
+            max-width: 560px;
+            margin: 0 auto 36px;
+            line-height: 1.6;
+        }
+        .hero-actions {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .hero-btn {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 16px 28px;
+            border-radius: 12px;
+            font-size: 15px; font-weight: 700;
+            text-decoration: none;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            transition: transform .12s, box-shadow .15s;
+        }
+        .hero-btn svg { width: 18px; height: 18px; stroke: currentColor; }
+        .hero-btn-primary {
+            background: linear-gradient(135deg, var(--red), var(--red-dark));
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(225,36,84,0.35);
+        }
+        .hero-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(225,36,84,0.45); }
+        .hero-btn-outline {
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            border: 1.5px solid rgba(255,255,255,0.25);
+        }
+        .hero-btn-outline:hover { background: rgba(255,255,255,0.14); transform: translateY(-1px); }
+
+        .hero-wallet {
+            margin-top: 36px;
+            padding-top: 28px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .hero-wallet .hw-label {
+            font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+            color: rgba(255,255,255,0.5); font-weight: 700; margin-bottom: 8px;
+        }
+        .hero-wallet .hw-addr {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+            font-size: 13.5px;
+            color: rgba(255,255,255,0.85);
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            transition: background .15s;
+        }
+        .hero-wallet .hw-addr:hover { background: rgba(255,255,255,0.1); }
+        .hero-wallet .hw-addr svg { width: 14px; height: 14px; stroke: rgba(255,255,255,0.6); flex-shrink: 0; }
+        .hero-wallet .hw-net {
+            font-size: 12px; color: rgba(255,255,255,0.45);
+            margin-top: 6px;
+        }
+
+        /* Services grid */
+        .services {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 72px 24px 80px;
+        }
+        .services-head {
+            text-align: center;
+            margin-bottom: 44px;
+        }
+        .services-head h2 {
+            font-family: 'Plus Jakarta Sans','Inter',sans-serif;
+            font-size: clamp(24px, 3.5vw, 34px);
+            font-weight: 800;
+            color: var(--navy);
+            margin: 0 0 8px;
+            letter-spacing: -0.02em;
+        }
+        .services-head p { color: var(--muted); font-size: 15.5px; max-width: 520px; margin: 0 auto; }
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        @media (max-width: 900px) { .services-grid { grid-template-columns: 1fr; } }
+        .svc-card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
+            padding: 32px 28px;
+            display: flex;
+            flex-direction: column;
+            transition: transform .15s, box-shadow .15s;
+        }
+        .svc-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+        .svc-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            display: grid; place-items: center;
+            margin-bottom: 20px;
+        }
+        .svc-icon svg { width: 24px; height: 24px; stroke: currentColor; }
+        .svc-icon.icon-deposit  { background: linear-gradient(135deg, #ecfbf2, #d4f3e2); color: #14774f; }
+        .svc-icon.icon-card     { background: linear-gradient(135deg, #eef1ff, #dbe3ff); color: #4663c9; }
+        .svc-icon.icon-api      { background: linear-gradient(135deg, #fff3f6, #ffd9e2); color: var(--red-dark); }
+        .svc-icon.icon-verify   { background: linear-gradient(135deg, #fffaf0, #fde2a5); color: #9b5b16; }
+        .svc-icon.icon-wallet   { background: linear-gradient(135deg, #f0f5fb, #dbe7f2); color: var(--navy); }
+        .svc-icon.icon-shield   { background: linear-gradient(135deg, #ecfbf2, #b6e8cd); color: #14774f; }
+        .svc-card h3 {
+            font-family: 'Plus Jakarta Sans','Inter',sans-serif;
+            font-size: 17px; font-weight: 700; color: var(--navy);
+            margin: 0 0 8px;
+        }
+        .svc-card p { font-size: 13.5px; color: var(--muted); line-height: 1.6; margin: 0 0 18px; flex: 1; }
+        .svc-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 13.5px; font-weight: 700;
+            color: var(--navy);
+            text-decoration: none;
+            transition: gap .15s;
+        }
+        .svc-link:hover { gap: 10px; }
+        .svc-link svg { width: 14px; height: 14px; stroke: currentColor; }
+
+        /* API section */
+        .api-section {
+            background: linear-gradient(180deg, #f7faff 0%, var(--bg) 100%);
+            padding: 64px 24px 72px;
+        }
+        .api-inner {
+            max-width: 1180px;
+            margin: 0 auto;
+        }
+        .api-head {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+        .api-head h2 {
+            font-family: 'Plus Jakarta Sans','Inter',sans-serif;
+            font-size: clamp(24px, 3.5vw, 34px);
+            font-weight: 800;
+            color: var(--navy);
+            margin: 0 0 8px;
+            letter-spacing: -0.02em;
+        }
+        .api-head p { color: var(--muted); font-size: 15.5px; max-width: 520px; margin: 0 auto; }
+        .api-table-wrap {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
+            overflow-x: auto;
+        }
+        .api-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .api-table th {
+            text-align: left;
+            padding: 14px 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+            background: #f7faff;
+            border-bottom: 1.5px solid var(--line);
+        }
+        .api-table td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--line);
+            vertical-align: middle;
+        }
+        .api-table tr:last-child td { border-bottom: none; }
+        .api-table .method-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 11.5px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+        }
+        .method-badge.get  { background: #ecfbf2; color: #14774f; }
+        .method-badge.post { background: #eef1ff; color: #4663c9; }
+        .api-table .ep {
+            font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+            font-size: 13px; color: var(--navy); font-weight: 600;
+        }
+        .api-table .desc { color: var(--muted); }
+
+        /* How it works */
+        .how-section {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 64px 24px 80px;
+        }
+        .how-head {
+            text-align: center;
+            margin-bottom: 44px;
+        }
+        .how-head h2 {
+            font-family: 'Plus Jakarta Sans','Inter',sans-serif;
+            font-size: clamp(24px, 3.5vw, 34px);
+            font-weight: 800;
+            color: var(--navy);
+            margin: 0 0 8px;
+            letter-spacing: -0.02em;
+        }
+        .how-head p { color: var(--muted); font-size: 15.5px; max-width: 520px; margin: 0 auto; }
+        .how-steps {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+        @media (max-width: 900px) { .how-steps { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 520px) { .how-steps { grid-template-columns: 1fr; } }
+        .how-step {
+            text-align: center;
+            position: relative;
+            padding: 28px 20px;
+        }
+        .how-num {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--navy), var(--navy-dark));
+            color: #fff;
+            display: inline-grid;
+            place-items: center;
+            font-family: 'Plus Jakarta Sans','Inter',sans-serif;
+            font-size: 18px; font-weight: 800;
+            margin-bottom: 16px;
+            box-shadow: 0 6px 18px rgba(34,58,102,0.25);
+        }
+        .how-step h4 {
+            font-family: 'Plus Jakarta Sans','Inter',sans-serif;
+            font-size: 15px; font-weight: 700; color: var(--navy);
+            margin: 0 0 6px;
+        }
+        .how-step p { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.55; }
+
+        /* Bottom CTA */
+        .cta-banner {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
+            color: #fff;
+            text-align: center;
+            padding: 56px 24px;
+        }
+        .cta-banner h2 {
+            font-family: 'Plus Jakarta Sans','Inter',sans-serif;
+            font-size: clamp(22px, 3vw, 30px);
+            font-weight: 800;
+            margin: 0 0 12px;
+        }
+        .cta-banner p { color: rgba(255,255,255,0.65); font-size: 15px; margin: 0 0 28px; }
+        .cta-banner .hero-actions { justify-content: center; }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="inner">
+            <a class="brand-link" href="https://poffbank.com" target="_blank" rel="noopener">
+                <img src="https://poffbank.com/public/uploads/media/logo.png" alt="PoffBank">
+                <span class="brand-text">
+                    <span class="brand-name">PoffBank</span>
+                    <span class="brand-tag">Payment Gateway</span>
+                </span>
+            </a>
+            <div class="trust-pills">
+                <span class="trust-pill">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    256-bit SSL
+                </span>
+                <span class="trust-pill">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                    On-Chain Verified
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-inner">
+            <div class="hero-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Secure Offshore Payment Gateway
+            </div>
+            <h1>Accept Payments.<br><span class="accent">Settle in USDT.</span></h1>
+            <p class="hero-sub">Process card and crypto deposits through our PCI-compliant gateway. All funds settle as USDT (TRC-20) directly on-chain — no KYC, no intermediaries, no delays.</p>
+            <div class="hero-actions">
+                <a href="/pay.html" class="hero-btn hero-btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                    Make a Deposit
+                </a>
+                <a href="/pay.html?method=direct" class="hero-btn hero-btn-outline">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg>
+                    Pay Direct (USDT)
+                </a>
+            </div>
+            <div class="hero-wallet">
+                <div class="hw-label">Settlement Wallet (USDT TRC-20)</div>
+                <div class="hw-addr" id="walletCopy" title="Click to copy">
+                    <span id="walletAddr">TPznWCtmn4WLuubNDTZ92e1gSiuYF9nqj6</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </div>
+                <div class="hw-net">Tron Network &middot; All deposits settle here on-chain</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services -->
+    <section class="services">
+        <div class="services-head">
+            <h2>Payment Services</h2>
+            <p>Multiple deposit methods, all settling directly to your USDT wallet on the Tron blockchain.</p>
+        </div>
+        <div class="services-grid">
+            <div class="svc-card">
+                <div class="svc-icon icon-card">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                </div>
+                <h3>Card Deposits</h3>
+                <p>Accept Visa, Mastercard, and Amex. Customers pay with their credit or debit card through our globally-routed PCI-DSS processors. Funds convert to USDT and settle on-chain automatically.</p>
+                <a href="/pay.html?method=card" class="svc-link">
+                    Pay with card <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+            </div>
+            <div class="svc-card">
+                <div class="svc-icon icon-deposit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                </div>
+                <h3>Direct USDT Deposits</h3>
+                <p>Send USDT (TRC-20) directly from any wallet — TronLink, Trust Wallet, Binance, Bybit. Paste your transaction hash and we verify it on-chain in seconds.</p>
+                <a href="/pay.html?method=direct" class="svc-link">
+                    Send USDT direct <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+            </div>
+            <div class="svc-card">
+                <div class="svc-icon icon-api">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                </div>
+                <h3>Crypto Hosted Checkout</h3>
+                <p>Pay with BTC, ETH, USDT, and 100+ cryptocurrencies through our hosted invoice page. All payments are automatically converted and settled in USDT (TRC-20).</p>
+                <a href="/pay.html?method=hosted" class="svc-link">
+                    Pay with crypto <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+            </div>
+            <div class="svc-card">
+                <div class="svc-icon icon-verify">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </div>
+                <h3>Transaction Verification</h3>
+                <p>Verify any payment on-chain via the Tron blockchain. Submit a transaction hash and our system checks the USDT transfer amount, destination, and confirmation status in real time.</p>
+                <a href="/pay.html?method=direct" class="svc-link">
+                    Verify a transaction <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+            </div>
+            <div class="svc-card">
+                <div class="svc-icon icon-wallet">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.4 0 4.58.94 6.18 2.47"/><polyline points="21 3 21 9 15 9"/></svg>
+                </div>
+                <h3>On-Chain Settlement</h3>
+                <p>Every deposit — card or crypto — settles as USDT (TRC-20) directly to your merchant wallet. Verifiable on Tronscan, irreversible, and in your control within minutes.</p>
+                <a href="https://tronscan.org/#/address/TPznWCtmn4WLuubNDTZ92e1gSiuYF9nqj6" target="_blank" rel="noopener" class="svc-link">
+                    View on Tronscan <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+            </div>
+            <div class="svc-card">
+                <div class="svc-icon icon-shield">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
+                <h3>Bank-Grade Security</h3>
+                <p>AES-256 encryption in transit. Card data is handled exclusively by PCI-DSS Level 1 certified processors — nothing card-related ever touches our servers.</p>
+                <a href="/pay.html" class="svc-link">
+                    Start secure payment <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- API Endpoints -->
+    <section class="api-section">
+        <div class="api-inner">
+            <div class="api-head">
+                <h2>API Endpoints</h2>
+                <p>Integrate PoffBank payments into your application. Create invoices, process deposits, and verify transactions programmatically.</p>
+            </div>
+            <div class="api-table-wrap">
+                <table class="api-table">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="method-badge get">GET</span></td>
+                            <td class="ep">/api/health</td>
+                            <td class="desc">Server health check and upstream status</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge get">GET</span></td>
+                            <td class="ep">/api/config</td>
+                            <td class="desc">Available payment methods, wallets, and provider configuration</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge post">POST</span></td>
+                            <td class="ep">/api/invoice</td>
+                            <td class="desc">Create a hosted crypto invoice (USDT, BTC, ETH, 100+ coins)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge post">POST</span></td>
+                            <td class="ep">/api/direct-invoice</td>
+                            <td class="desc">Create a direct USDT (TRC-20) deposit order</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge post">POST</span></td>
+                            <td class="ep">/api/card-onramp</td>
+                            <td class="desc">Create a card-to-USDT deposit via ChangeNOW, Guardarian, or MoonPay</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge post">POST</span></td>
+                            <td class="ep">/api/direct-invoice/:orderId/submit-tx</td>
+                            <td class="desc">Submit a Tron transaction hash for on-chain verification</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge get">GET</span></td>
+                            <td class="ep">/api/payment/status/:orderId</td>
+                            <td class="desc">Check payment status, amount received, and tx hash</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-section">
+        <div class="how-head">
+            <h2>How It Works</h2>
+            <p>From deposit to settlement in minutes. No intermediaries, no holdbacks.</p>
+        </div>
+        <div class="how-steps">
+            <div class="how-step">
+                <div class="how-num">1</div>
+                <h4>Choose Method</h4>
+                <p>Card, crypto, or direct USDT. Pick whichever works for you.</p>
+            </div>
+            <div class="how-step">
+                <div class="how-num">2</div>
+                <h4>Enter Amount</h4>
+                <p>Specify the deposit amount in USD. Minimum $1.00.</p>
+            </div>
+            <div class="how-step">
+                <div class="how-num">3</div>
+                <h4>Complete Payment</h4>
+                <p>Pay on the secure hosted checkout. Card data never touches our servers.</p>
+            </div>
+            <div class="how-step">
+                <div class="how-num">4</div>
+                <h4>On-Chain Settlement</h4>
+                <p>USDT (TRC-20) lands in the merchant wallet. Verified on Tronscan.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bottom CTA -->
+    <section class="cta-banner">
+        <h2>Ready to make a deposit?</h2>
+        <p>Card and crypto payments settle directly on-chain in minutes.</p>
+        <div class="hero-actions">
+            <a href="/pay.html" class="hero-btn hero-btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Go to Secure Checkout
+            </a>
+            <a href="https://tronscan.org/#/address/TPznWCtmn4WLuubNDTZ92e1gSiuYF9nqj6" target="_blank" rel="noopener" class="hero-btn hero-btn-outline">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                View Wallet on Tronscan
+            </a>
+        </div>
+    </section>
+
+    <footer class="site-footer">
+        <div class="inner">
+            <div class="copy">&copy; 2025 PoffBank Panama Offshore Bank &middot; All rights reserved</div>
+            <div class="certs">
+                <span class="cert-pill">PCI DSS Level 1</span>
+                <span class="cert-pill">ISO 27001</span>
+                <span class="cert-pill">USDT TRC-20</span>
+                <span class="cert-pill">On-Chain Verified</span>
+            </div>
+        </div>
+    </footer>
+
+    <div class="toast" id="toast">Copied to clipboard</div>
+
+    <script>
+        const walletEl = document.getElementById('walletCopy');
+        const toastEl = document.getElementById('toast');
+        if (walletEl) {
+            walletEl.addEventListener('click', async () => {
+                const addr = document.getElementById('walletAddr').textContent;
+                try {
+                    await navigator.clipboard.writeText(addr);
+                } catch {
+                    const tmp = document.createElement('textarea');
+                    tmp.value = addr;
+                    document.body.appendChild(tmp);
+                    tmp.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tmp);
+                }
+                toastEl.classList.add('show');
+                setTimeout(() => toastEl.classList.remove('show'), 1600);
+            });
+        }
+    </script>
+</body>
+</html>

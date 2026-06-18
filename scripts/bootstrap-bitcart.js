@@ -39,7 +39,7 @@ const WALLETS = [
   {
     name: 'PoffBank USDT TRC-20',
     currency: 'TRX', // Tron daemon handles TRC-20 USDT under the TRX wallet
-    xpub: process.env.USDT_TRC20_WALLET || 'TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh',
+    xpub: process.env.USDT_TRC20_WALLET || 'TPznWCtmn4WLuubNDTZ92e1gSiuYF9nqj6',
     contract: process.env.USDT_TRC20_CONTRACT || 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
     label: 'usdt-trc20',
   },

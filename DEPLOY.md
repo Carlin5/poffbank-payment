@@ -15,7 +15,7 @@ no CORS, no cross-host bugs.
    *Store Settings → IPN Secret Key* → generate. Copy it.
 3. **Set your payout wallet.** NOWPayments dashboard → *Payment Settings*
    → payout wallet for `USDT (TRC-20)` →
-   `TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh`.
+   `TPznWCtmn4WLuubNDTZ92e1gSiuYF9nqj6`.
 
 ---
 

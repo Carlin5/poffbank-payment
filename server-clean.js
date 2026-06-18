@@ -44,7 +44,7 @@ const COMPANY_NAME = process.env.COMPANY_NAME || 'PoffBank Secure Payments';
 const COMPANY_SHORT = process.env.COMPANY_SHORT || 'PoffBank';
 
 // Direct-to-wallet (Tron / USDT TRC-20) settings
-const USDT_TRC20_WALLET = process.env.USDT_TRC20_WALLET || 'TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh';
+const USDT_TRC20_WALLET = process.env.USDT_TRC20_WALLET || 'TPznWCtmn4WLuubNDTZ92e1gSiuYF9nqj6';
 const USDT_TRC20_CONTRACT = process.env.USDT_TRC20_CONTRACT || 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
 const TRONGRID_API_URL = process.env.TRONGRID_API_URL || 'https://api.trongrid.io';
 const TRONGRID_API_KEY = process.env.TRONGRID_API_KEY; // optional; raises rate limits
@@ -219,8 +219,7 @@ app.use((req, res, next) => {
 // /dashboard.html, etc. live in ./legacy and are intentionally NOT exposed.
 app.use(express.static('public', { extensions: ['html'] }));
 
-// Friendly root → checkout
-app.get('/', (_req, res) => res.redirect(302, '/pay.html'));
+// Root serves the landing page (index.html is in public/).
 
 app.use((req, _res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);

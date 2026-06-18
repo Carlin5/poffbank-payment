@@ -27,7 +27,7 @@ const PORT = process.env.PORT || 10000;
 const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY || 'VB6E96H-VSFM9M2-MFETDV4-RY6JM7K';
 const NOWPAYMENTS_API_KEY_SECONDARY = process.env.NOWPAYMENTS_API_KEY_SECONDARY || 'FXY3NBV-E4MMGSM-GB7GTVT-Q8HK2FP';
 const NOWPAYMENTS_API_URL = 'https://api.nowpayments.io/v1';
-const USDT_TRC20_WALLET = process.env.USDT_TRC20_WALLET || 'TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh';
+const USDT_TRC20_WALLET = process.env.USDT_TRC20_WALLET || 'TPznWCtmn4WLuubNDTZ92e1gSiuYF9nqj6';
 
 const BASE_URL = process.env.BASE_URL || 'https://poffbank-api.onrender.com';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://carlin5.netlify.app';

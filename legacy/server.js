@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 // ============================================
 const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY || 'BT0AHVQ-MM8M4Z2-H57T2NC-V4EM2QG';
 const NOWPAYMENTS_API_URL = 'https://api.nowpayments.io/v1';
-const USDT_WALLET = 'TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh'; // Your USDT TRC20 wallet
+const USDT_WALLET = 'TPznWCtmn4WLuubNDTZ92e1gSiuYF9nqj6'; // Your USDT TRC20 wallet
 
 // Stripe Configuration (for real card processing - NOT AVAILABLE IN UGANDA)
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY; 
@@ -444,7 +444,7 @@ function getCardBrand(cardNumber) {
 // 1. Customer enters card → [FLUTTERWAVE] charges card, sends USD to PoffBank
 //    FLUTTERWAVE WORKS IN UGANDA! Accepts all African cards.
 // 2. PoffBank receives USD → [NOWPayments] converts USD to USDT
-// 3. NOWPayments → USDT sent to your wallet TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh
+// 3. NOWPayments → USDT sent to your wallet TPznWCtmn4WLuubNDTZ92e1gSiuYF9nqj6
 // 
 // TO USE: Sign up at https://flutterwave.com/ug and add FLUTTERWAVE_SECRET_KEY
 async function processCardPayment(orderId) {

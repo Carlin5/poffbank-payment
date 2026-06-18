@@ -41,7 +41,7 @@ services:
       # USDT TRC-20 merchant wallet — the destination for ALL card → USDT
       # payments (and for the direct-USDT method). Settle straight on-chain.
       - key: USDT_TRC20_WALLET
-        value: TURXbzSQQKTiA6fqMzsZMaFQyXAU7o2nXh
+        value: TPznWCtmn4WLuubNDTZ92e1gSiuYF9nqj6
 
       # Card → USDT on-ramp keys. By default the gateway uses the no-KYB
       # NOWPayments + MoonPay-public fallbacks (no extra config needed).

@@ -169,8 +169,7 @@ const BITCART_CHECKOUT_URL_TEMPLATE = process.env.BITCART_CHECKOUT_URL_TEMPLATE
 const BITCART_ENABLED = Boolean(BITCART_API_URL && BITCART_API_TOKEN && BITCART_STORE_ID);
 
 if (!NOWPAYMENTS_API_KEY) {
-  console.error('[FATAL] NOWPAYMENTS_API_KEY is not set in environment.');
-  process.exit(1);
+  console.warn('[WARN] NOWPAYMENTS_API_KEY is not set — crypto hosted invoices will be unavailable, but card and direct USDT flows will work.');
 }
 if (!NOWPAYMENTS_IPN_SECRET) {
   console.warn('[WARN] NOWPAYMENTS_IPN_SECRET is not set — webhook signatures will be rejected.');
@@ -234,18 +233,22 @@ const orders = new Map(); // orderId -> { ... }
 // ---------------------------------------------------------------------------
 // NOWPayments client
 // ---------------------------------------------------------------------------
-const np = axios.create({
-  baseURL: NOWPAYMENTS_API_URL,
-  headers: { 'x-api-key': NOWPAYMENTS_API_KEY, 'Content-Type': 'application/json' },
-  timeout: 30000,
-});
+const np = NOWPAYMENTS_API_KEY
+  ? axios.create({
+      baseURL: NOWPAYMENTS_API_URL,
+      headers: { 'x-api-key': NOWPAYMENTS_API_KEY, 'Content-Type': 'application/json' },
+      timeout: 30000,
+    })
+  : null;
 
 async function npStatus() {
+  if (!np) return { message: 'OK (NOWPayments not configured)' };
   const { data } = await np.get('/status');
   return data;
 }
 
 async function npCreateInvoice({ amount, orderId, description, email }) {
+  if (!np) throw new Error('NOWPayments is not configured — set NOWPAYMENTS_API_KEY to enable crypto invoices.');
   const payload = {
     price_amount: Number(amount),
     price_currency: PRICE_CURRENCY,
@@ -270,12 +273,14 @@ async function npCreateInvoice({ amount, orderId, description, email }) {
 }
 
 async function npGetPaymentsForOrder(orderId) {
+  if (!np) return { data: [] };
   // List payments filtered by order_id. NOWPayments returns { data: [...] }.
   const { data } = await np.get('/payment/', { params: { orderId, limit: 5 } });
   return data;
 }
 
 async function npGetPaymentById(paymentId) {
+  if (!np) return null;
   const { data } = await np.get(`/payment/${paymentId}`);
   return data;
 }
@@ -728,7 +733,7 @@ app.get('/api/config', (_req, res) => {
     company: COMPANY_NAME,
     priceCurrency: PRICE_CURRENCY.toUpperCase(),
     methods: {
-      hosted: true,                                  // NOWPayments (crypto hosted invoice)
+      hosted: Boolean(np),                             // NOWPayments (crypto hosted invoice)
       direct: Boolean(PAYOUT_WALLETS.USDTTRC20),     // On-chain USDT TRC-20 self-send
       bitcart: BITCART_ENABLED,                      // Self-hosted Bitcart
       card: CARD_ONRAMP_ENABLED,                     // Card → USDT via Transak/MoonPay

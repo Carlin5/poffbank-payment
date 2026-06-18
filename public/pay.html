@@ -14,7 +14,7 @@
 <body>
     <header class="site-header">
         <div class="inner">
-            <a class="brand-link" href="https://poffbank.com" target="_blank" rel="noopener">
+            <a class="brand-link" href="/" rel="noopener">
                 <img src="https://poffbank.com/public/uploads/media/logo.png" alt="PoffBank">
                 <span class="brand-text">
                     <span class="brand-name">PoffBank</span>
@@ -37,7 +37,7 @@
     <main class="page">
         <div class="page-head">
             <h1>Secure Checkout</h1>
-            <p class="lede">Complete your payment on our PCI-compliant hosted page. Funds are settled on-chain in minutes.</p>
+            <p class="lede">Complete your payment securely. Funds are settled on-chain in minutes.</p>
         </div>
 
         <div class="layout">
@@ -60,7 +60,7 @@
                             <span class="amount-value" id="displayAmount">0.00</span>
                             <span class="amount-code">USD</span>
                         </div>
-                        <div class="hero-foot">Hosted checkout · settled in USDT (TRC&#8209;20)</div>
+                        <div class="hero-foot">Settled in USDT (TRC&#8209;20) on-chain</div>
                     </div>
                 </div>
 
@@ -97,17 +97,17 @@
             <section class="card form-card" aria-label="Payment details">
                 <div class="card-head">
                     <h2>Payment details</h2>
-                    <p>Choose how you'd like to pay. Both options are settled in USDT.</p>
+                    <p>Choose how you'd like to pay. All options settle in USDT on-chain.</p>
                 </div>
 
                 <div class="method-toggle" role="radiogroup" aria-label="Payment method" id="methodToggle">
-                    <label class="method-option" data-method="card" id="methodCard" style="display:none;">
-                        <input type="radio" name="method" value="card">
+                    <label class="method-option selected" data-method="card" id="methodCard">
+                        <input type="radio" name="method" value="card" checked>
                         <span class="mt-title">Pay with card</span>
-                        <span class="mt-sub">Visa · Mastercard · settled in USDT</span>
+                        <span class="mt-sub">Visa · Mastercard · Amex · settled in USDT</span>
                     </label>
-                    <label class="method-option selected" data-method="hosted">
-                        <input type="radio" name="method" value="hosted" checked>
+                    <label class="method-option" data-method="hosted">
+                        <input type="radio" name="method" value="hosted">
                         <span class="mt-title">Pay with crypto</span>
                         <span class="mt-sub">USDT, BTC, ETH … hosted checkout</span>
                     </label>
@@ -149,33 +149,29 @@
                         </div>
                     </div>
 
-                    <div class="notice" id="cardNotice" style="display:none;">
+                    <!-- Card notice (default visible) -->
+                    <div class="notice" id="cardNotice">
                         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
                         <div>
                             <div class="t">Pay with credit or debit card</div>
-                            <div class="d">Card data + identity verification are handled by our PCI-DSS card processor — nothing card-related touches PoffBank. Your payment is converted to USDT and settled on-chain to our USDT (TRC&#8209;20) wallet within minutes.</div>
-                            <ol class="steps" aria-label="How card payment works">
-                                <li><span class="step-num">1</span><span class="step-text"><strong>Enter your card</strong> on the secure form below (no signup required).</span></li>
-                                <li><span class="step-num">2</span><span class="step-text"><strong>Quick ID check</strong> — a selfie and a photo of your ID, done in the same window.</span></li>
-                                <li><span class="step-num">3</span><span class="step-text"><strong>USDT lands</strong> at PoffBank's TRC&#8209;20 wallet automatically. Receipt emailed.</span></li>
-                            </ol>
-                            <div class="d" style="margin-top:6px;">If one processor says <em>“not supported in your region”</em>, just pick another from the chooser below and try again — your wallet destination stays the same.</div>
+                            <div class="d">Enter your card details on the secure form below. Your payment is converted to USDT and settled on-chain to our merchant wallet within minutes. Card data is processed by our PCI-DSS Level&nbsp;1 certified processor — nothing card-related touches PoffBank servers.</div>
                         </div>
                     </div>
 
-                    <div class="provider-chooser" id="cardProviderChooser" role="radiogroup" aria-label="Card processor" style="display:none;">
-                        <!-- Tiles populated from /api/config -->
-                    </div>
-
+                    <!-- Inline card-form iframe (shows after clicking Pay) -->
                     <div class="embed-panel" id="cardEmbedPanel" style="display:none;">
                         <div class="embed-head">
-                            <span class="embed-title">Secure card form</span>
+                            <span class="embed-title">Secure card payment</span>
                             <a class="embed-newtab" id="cardEmbedNewTab" href="#" target="_blank" rel="noopener">Open in new tab ↗</a>
                         </div>
                         <iframe id="cardEmbedFrame" title="Secure card checkout" allow="payment; camera; microphone" referrerpolicy="no-referrer-when-downgrade"></iframe>
-                        <div class="embed-foot">Hosted by the card processor · PoffBank never sees your card details.</div>
+                        <div class="embed-foot">Encrypted and processed by our PCI-DSS card processor · PoffBank never sees your card details.</div>
                     </div>
-                    <div class="notice" id="hostedNotice">
+
+                    <!-- Fallback provider chooser (hidden by default; shown only if primary embed fails) -->
+                    <div class="provider-chooser" id="cardProviderChooser" role="radiogroup" aria-label="Card processor" style="display:none;"></div>
+
+                    <div class="notice" id="hostedNotice" style="display:none;">
                         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
                         <div>
                             <div class="t">Pay with crypto (USDT, BTC, ETH …)</div>
@@ -200,11 +196,11 @@
                     <button type="submit" class="btn-pay" id="payButton">
                         <span class="label-default">
                             <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                            <span id="payButtonLabel">Continue to Secure Payment</span>
+                            <span id="payButtonLabel">Pay with Card</span>
                         </span>
                         <span class="label-loading">
                             <span class="spinner"></span>
-                            <span id="payButtonLoadingLabel">Creating secure invoice…</span>
+                            <span id="payButtonLoadingLabel">Processing…</span>
                         </span>
                     </button>
 
@@ -218,7 +214,7 @@
 
     <footer class="site-footer">
         <div class="inner">
-            <div class="copy">© 2025 PoffBank Secure Payments · All rights reserved</div>
+            <div class="copy">&copy; 2025 PoffBank Secure Payments · All rights reserved</div>
             <div class="certs">
                 <span class="cert-pill">PCI DSS Level 1</span>
                 <span class="cert-pill">ISO 27001</span>
@@ -241,7 +237,7 @@
         const hostedNotice  = document.getElementById('hostedNotice');
         const directNotice  = document.getElementById('directNotice');
         const bitcartNotice = document.getElementById('bitcartNotice');
-        const payLabel = document.getElementById('payButtonLabel');
+        const payLabel      = document.getElementById('payButtonLabel');
         const payLoadingLabel = document.getElementById('payButtonLoadingLabel');
 
         function selectMethod(method) {
@@ -252,9 +248,10 @@
                 if (input) input.checked = sel;
             });
             cardNotice.style.display    = method === 'card'    ? '' : 'none';
+            // Hide the provider chooser unless it was explicitly shown via fallback.
             const chooser = document.getElementById('cardProviderChooser');
-            if (chooser) chooser.style.display = (method === 'card' && availableCardProviders.length > 0) ? '' : 'none';
-            // Hide any open card-form iframe when switching methods.
+            if (chooser && method !== 'card') chooser.style.display = 'none';
+            // Hide any open card-form iframe when switching away from card.
             const embedPanel = document.getElementById('cardEmbedPanel');
             if (embedPanel && method !== 'card') {
                 embedPanel.style.display = 'none';
@@ -265,8 +262,8 @@
             directNotice.style.display  = method === 'direct'  ? '' : 'none';
             bitcartNotice.style.display = method === 'bitcart' ? '' : 'none';
             if (method === 'card') {
-                payLabel.textContent = 'Continue to Card Payment';
-                payLoadingLabel.textContent = 'Preparing card checkout…';
+                payLabel.textContent = 'Pay with Card';
+                payLoadingLabel.textContent = 'Preparing secure card form…';
             } else if (method === 'direct') {
                 payLabel.textContent = 'Show Wallet & Instructions';
                 payLoadingLabel.textContent = 'Preparing your order…';
@@ -280,33 +277,34 @@
         }
         methodOptions.forEach(o => o.addEventListener('click', () => selectMethod(o.dataset.method)));
 
-        // -------- Bootstrap from /api/config (reveal Bitcart/Card if available)
-        // and apply payment-link query params (?amount=&description=&email=&method=).
-        let serverCardProvider = null;       // primary card-onramp provider id (server default)
-        let selectedCardProvider = null;     // what the customer picked from the chooser
-        let availableCardProviders = [];     // ordered list of providers we can use
+        // ---- Provider logic (auto-picks best embeddable, no chooser shown) ----
+        let serverCardProvider = null;
+        let selectedCardProvider = null;
+        let availableCardProviders = [];
+        // Ordered by best UX: embeddable first, then redirect fallbacks.
+        const PROVIDER_ORDER = ['changenow', 'guardarian', 'banxa', 'transak', 'moonpay', 'nowpayments-card', 'moonpay-public'];
 
         function providerHumanName(p) {
             switch (p) {
                 case 'transak':           return 'Transak';
                 case 'moonpay':           return 'MoonPay';
                 case 'moonpay-public':    return 'MoonPay';
-                case 'nowpayments-card':  return 'NOWPayments (Simplex / Mercuryo)';
+                case 'nowpayments-card':  return 'NOWPayments';
                 case 'changenow':         return 'ChangeNOW';
                 case 'guardarian':        return 'Guardarian';
                 case 'banxa':             return 'Banxa';
-                default:                  return 'our PCI-DSS card processor';
+                default:                  return 'Card Processor';
             }
         }
 
         function providerSubtitle(p, meta) {
-            if (p === 'changenow')                         return 'Card form opens here on PoffBank · routes via Mercuryo / Simplex / Wert';
-            if (p === 'guardarian')                        return 'Card form opens here on PoffBank · strong Africa coverage via Mercuryo';
-            if (p === 'banxa')                             return 'Card form opens in a new tab · partner flow, multi-processor routing';
-            if (p === 'moonpay-public' || p === 'moonpay') return 'Card form opens in a new tab · limited regions (not Uganda)';
-            if (p === 'nowpayments-card')                  return 'Simplex / Mercuryo via NOWPayments hosted invoice';
+            if (p === 'changenow')                         return 'Routes via Mercuryo / Simplex / Wert · 200+ countries';
+            if (p === 'guardarian')                        return 'Strong Africa coverage via Mercuryo · 190+ countries';
+            if (p === 'banxa')                             return 'Multi-processor routing · partner flow';
+            if (p === 'moonpay-public' || p === 'moonpay') return 'Limited regions';
+            if (p === 'nowpayments-card')                  return 'Simplex / Mercuryo via NOWPayments';
             if (p === 'transak')                           return 'Branded Transak partner flow';
-            if (meta && meta.aggregator)                   return 'Routes through Mercuryo, Simplex, Wert & more · 200+ countries';
+            if (meta && meta.aggregator)                   return '200+ countries';
             return '';
         }
 
@@ -318,22 +316,18 @@
             return null;
         }
 
-        // Display order: embeddable aggregators first (card form opens inline on
-        // PoffBank — best UX), then KYB-required partner flows if available, then
-        // MoonPay-public (limited regions) last.
-        const PROVIDER_ORDER = ['changenow', 'guardarian', 'banxa', 'transak', 'moonpay', 'nowpayments-card', 'moonpay-public'];
-
+        // Build provider chooser (only shown as fallback if user needs it)
         function renderProviderChooser() {
             const root = document.getElementById('cardProviderChooser');
             if (!root) return;
             root.innerHTML = '';
             availableCardProviders.forEach((p, i) => {
                 const tile = document.createElement('label');
-                tile.className = 'provider-tile' + (i === 0 ? ' selected' : '');
+                tile.className = 'provider-tile' + (p.id === selectedCardProvider ? ' selected' : '');
                 tile.dataset.provider = p.id;
                 const badge = providerBadge(p.id, p.meta);
                 tile.innerHTML = `
-                    <input type="radio" name="cardProvider" value="${p.id}" ${i === 0 ? 'checked' : ''}>
+                    <input type="radio" name="cardProvider" value="${p.id}" ${p.id === selectedCardProvider ? 'checked' : ''}>
                     <div class="pt-head">
                         <span class="pt-name">${providerHumanName(p.id)}</span>
                         ${badge ? `<span class="pt-badge ${badge.cls}">${badge.text}</span>` : ''}
@@ -343,9 +337,6 @@
                 tile.addEventListener('click', () => selectCardProvider(p.id));
                 root.appendChild(tile);
             });
-            if (availableCardProviders.length > 0) {
-                selectedCardProvider = availableCardProviders[0].id;
-            }
         }
 
         function selectCardProvider(id) {
@@ -356,8 +347,6 @@
                 const input = t.querySelector('input');
                 if (input) input.checked = sel;
             });
-            // Reset any previously rendered iframe so the customer doesn't see a
-            // stale card form from the old provider after switching.
             const embedPanel = document.getElementById('cardEmbedPanel');
             const embedFrame = document.getElementById('cardEmbedFrame');
             if (embedPanel && embedPanel.style.display !== 'none') {
@@ -366,6 +355,17 @@
             }
         }
 
+        // Show provider chooser only when user hits a region issue
+        function showProviderFallback() {
+            const chooser = document.getElementById('cardProviderChooser');
+            if (chooser && availableCardProviders.length > 1) {
+                renderProviderChooser();
+                chooser.style.display = '';
+                chooser.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        // ---- Bootstrap: fetch config, auto-select card ----
         (async function bootstrap() {
             let cfg = { methods: { hosted: true, direct: true, bitcart: false, card: false } };
             try {
@@ -375,6 +375,7 @@
 
             const toggle = document.getElementById('methodToggle');
             let visible = 2; // hosted + direct always visible
+
             if (cfg.methods?.card) {
                 document.getElementById('methodCard').style.display = '';
                 visible++;
@@ -384,9 +385,12 @@
                 availableCardProviders = PROVIDER_ORDER
                     .filter(p => providersMeta[p])
                     .map(p => ({ id: p, meta: providersMeta[p] }));
-                renderProviderChooser();
 
-                // Card is the most consumer-friendly default — select it on first paint.
+                // Auto-select best embeddable provider (no chooser shown)
+                const embeddable = availableCardProviders.find(p => p.meta && p.meta.embeddable);
+                selectedCardProvider = embeddable ? embeddable.id : (availableCardProviders[0]?.id || serverCardProvider);
+
+                // Card is default
                 selectMethod('card');
             }
             if (cfg.methods?.bitcart) {
@@ -396,6 +400,13 @@
             if (visible >= 4) toggle.classList.add('cols-4');
             else if (visible === 3) toggle.classList.add('cols-3');
 
+            // If card is not available (no providers configured), default to hosted
+            if (!cfg.methods?.card) {
+                document.getElementById('methodCard').style.display = 'none';
+                selectMethod('hosted');
+            }
+
+            // Apply URL query params
             const params = new URLSearchParams(window.location.search);
             const qAmount = parseFloat(params.get('amount'));
             const qDesc   = params.get('description') || params.get('desc');
@@ -413,6 +424,7 @@
             if (qMethod && cfg.methods?.[qMethod]) selectMethod(qMethod);
         })();
 
+        // ---- Form submit ----
         const form = document.getElementById('paymentForm');
         const btn  = document.getElementById('payButton');
         const err  = document.getElementById('errorBox');
@@ -427,7 +439,7 @@
             const amount = parseFloat(amountInput.value);
             const email = document.getElementById('email').value.trim();
             const description = document.getElementById('description').value.trim();
-            const method = document.querySelector('input[name="method"]:checked')?.value || 'hosted';
+            const method = document.querySelector('input[name="method"]:checked')?.value || 'card';
 
             if (!Number.isFinite(amount) || amount < 1) {
                 showError('Please enter an amount of at least $1.00.');
@@ -466,10 +478,10 @@
                 if (method === 'direct') {
                     window.location.href = '/pay-direct.html?order_id=' + encodeURIComponent(data.orderId);
                 } else if (method === 'card') {
-                    if (!data.onrampUrl) throw new Error('No card on-ramp URL returned.');
+                    if (!data.onrampUrl) throw new Error('No card payment URL returned.');
                     if (data.embedUrl) {
-                        // Render the provider's card widget inline on PoffBank.
-                        // Customer never leaves — no "sign up" wall, just a card form.
+                        // Render the provider's card widget inline — customer
+                        // enters card details right here on PoffBank. No redirect.
                         const panel    = document.getElementById('cardEmbedPanel');
                         const frame    = document.getElementById('cardEmbedFrame');
                         const newTab   = document.getElementById('cardEmbedNewTab');
@@ -479,8 +491,15 @@
                         panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         btn.classList.remove('loading');
                         btn.disabled = false;
+
+                        // Update button to say "Try another processor" for region fallback
+                        payLabel.textContent = 'Try Another Processor';
+                        payLoadingLabel.textContent = 'Switching processor…';
+                        // If embed doesn't work in customer's region, show chooser on next click
+                        showProviderFallback();
                         return;
                     }
+                    // No embed available — redirect to the provider's hosted page
                     window.location.href = data.onrampUrl;
                 } else {
                     if (!data.invoiceUrl) throw new Error('No invoice URL returned.');
